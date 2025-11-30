@@ -45,7 +45,7 @@
   // CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════
 
-  var WEBHOOK_URL = 'https://hook.us1.make.com/isom9yh80acr15c912ynhd4bt4e2g3o4';
+  var WEBHOOK_URL = 'https://hook.us1.make.com/gwansniortmd3r1y11c85xasvrkrc539';
   var COACH_LOCATION_ID = '7Ab8lel9dfY7xJBnMOrF';
   var SUBMISSION_TIMEOUT_MS = 60000; // V3: 60 second failsafe timeout
 
