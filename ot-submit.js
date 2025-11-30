@@ -3,6 +3,10 @@
  * OfferTermz Submit Module
  * ═══════════════════════════════════════════════════════════════════════════
  * 
+ * *** VERSION 4 ***
+ * UPDATES FROM V3:
+ * - Added "Lead Came From" field to validation, animation, and payload
+ * 
  * *** VERSION 3 ***
  * UPDATES FROM V2:
  * - Stronger double-click prevention (locks immediately on button click)
@@ -24,8 +28,8 @@
  * EDIT THIS WHEN: Changing submission logic, validation rules, coach location, webhook URL
  * 
  * CONFIGURATION:
- * - Line 42: Webhook URL (Make.com)
- * - Line 43: Coach Location ID (blocked from submissions)
+ * - Line 45: Webhook URL (Make.com)
+ * - Line 46: Coach Location ID (blocked from submissions)
  * 
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -114,6 +118,26 @@
     if (!el) return '';
     var val = el.value || '';
     return val.replace(/[<>]/g, '').trim();
+  }
+
+  // V4: Helper for getting select dropdown text (for dropdowns that use button display)
+  function getSelectDisplayValue(selector) {
+    // First try the standard select value
+    var val = getFieldValue(selector);
+    if (val) return val;
+    
+    // For GHL bootstrap-select dropdowns, look for the displayed text
+    var container = document.querySelector(selector);
+    if (container) {
+      var displayBtn = container.closest('.bootstrap-select');
+      if (displayBtn) {
+        var btnText = displayBtn.querySelector('.filter-option-inner-inner');
+        if (btnText) {
+          return btnText.textContent.trim();
+        }
+      }
+    }
+    return '';
   }
 
   function escapeHtml(text) {
@@ -293,7 +317,9 @@
       monthlyPayment: getFieldValue('input[placeholder="Monthly payment to the bank? (PITI)"]'),
       potentialRent: getFieldValue('input[name="contact.potential_monthly_lease_option_amount"]'),
       propertyCondition: getFieldValue('textarea[name="contact.property_condition"]'),
-      zillowLink: getFieldValue('input[name="contact.link_to_zillow"]')
+      zillowLink: getFieldValue('input[name="contact.link_to_zillow"]'),
+      // V4: New field
+      leadCameFrom: getFieldValue('select[name="contact.the_lead_came_from"]')
     };
   }
 
@@ -334,6 +360,8 @@
     var dealMissing = [];
     if (!fields.willSellOnTerms) dealMissing.push('Will They Sell on Terms?');
     if (!fields.propertyCondition) dealMissing.push('Property Condition');
+    // V4: Add lead source validation
+    if (!fields.leadCameFrom) dealMissing.push('Lead Came From');
     if (dealMissing.length > 0) {
       errors.push('💼 <strong>Deal Terms:</strong> ' + dealMissing.join(', '));
     }
@@ -420,7 +448,9 @@
       { name: 'Mortgage Balance', selector: 'input[placeholder="Current mortgage balance?"]' },
       { name: 'Monthly Payment', selector: 'input[placeholder="Monthly payment to the bank? (PITI)"]' },
       { name: 'Condition', selector: 'textarea[name="contact.property_condition"]' },
-      { name: 'Zillow Link', selector: 'input[name="contact.link_to_zillow"]' }
+      { name: 'Zillow Link', selector: 'input[name="contact.link_to_zillow"]' },
+      // V4: New field
+      { name: 'Lead Came From', selector: 'select[name="contact.the_lead_came_from"]' }
     ];
     
     fieldsToRead.forEach(function(f) {
@@ -550,7 +580,9 @@
         dealTerms: {
           willSellOnTerms: fields.willSellOnTerms,
           hasDebt: fields.mortgageBalance && parseFloat(fields.mortgageBalance.replace(/[^0-9.]/g, '')) > 0
-        }
+        },
+        // V4: New field in payload
+        leadSource: fields.leadCameFrom
       };
       
       // Coach location check
@@ -733,6 +765,6 @@
     cancelSubmission: unlockSubmission  // V3: Expose for manual cancellation
   };
 
-  log('✅ ot-submit.js v3 loaded');
+  log('✅ ot-submit.js v4 loaded');
 
 })();
