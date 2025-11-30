@@ -95,20 +95,22 @@
     }
     
     .ot-panel-left {
-      top: 0;
-      left: 0;
-      width: 45vw;
-      height: 100vh;
-      transform: translateX(-100%);
-    }
+  top: 0;
+  left: 0;
+  width: 45vw;
+  min-width: 400px;
+  max-width: 700px;
+  height: 100vh;
+  transform: translateX(-100%);
+}
     
     .ot-panel-right {
-      top: 0;
-      right: 0;
-      width: 45vw;
-      height: 100vh;
-      transform: translateX(100%);
-    }
+  top: 0;
+  right: 0;
+  width: 450px;
+  height: 100vh;
+  transform: translateX(100%);
+}
     
     .ot-panel-top {
       position: fixed;
