@@ -97,7 +97,7 @@
     .ot-panel-left {
       top: 0;
       left: 0;
-      width: 450px;
+      width: 45vw;
       height: 100vh;
       transform: translateX(-100%);
     }
@@ -105,7 +105,7 @@
     .ot-panel-right {
       top: 0;
       right: 0;
-      width: 450px;
+      width: 45vw;
       height: 100vh;
       transform: translateX(100%);
     }
