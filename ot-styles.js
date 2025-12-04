@@ -49,9 +49,9 @@
     }
     
     .ot-header-btn:hover {
-      background: linear-gradient(135deg, #3d4e56 0%, #34434a 100%);
+      background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%);
       transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 8px rgba(249,96,58,0.3);
     }
     
     .ot-header-btn.ot-btn-disabled {
