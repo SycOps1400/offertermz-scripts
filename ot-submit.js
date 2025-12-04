@@ -315,7 +315,7 @@
       willSellOnTerms: getFieldValue('select[name="contact.will_they_sell_on_termz"]'),
       mortgageBalance: getFieldValue('input[placeholder="Current mortgage balance?"]'),
       monthlyPayment: getFieldValue('input[placeholder="Monthly payment to the bank? (PITI)"]'),
-      potentialRent: getFieldValue('input[name="contact.potential_monthly_lease_option_amount"]'),
+      potentialRent: getFieldValue('input[placeholder="potential monthly lease option amount"]'),
       propertyCondition: getFieldValue('textarea[name="contact.property_condition"]'),
       zillowLink: getFieldValue('input[name="contact.link_to_zillow"]'),
       // V4: New field
@@ -430,7 +430,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   function startSAMReading(locationId) {
-    var fieldsToRead = [
+var fieldsToRead = [
       { name: 'First Name', selector: 'input[name="contact.first_name"]' },
       { name: 'Last Name', selector: 'input[name="contact.last_name"]' },
       { name: 'Phone', selector: 'input[name="contact.phone"]' },
@@ -447,6 +447,7 @@
       { name: 'Sell on Terms?', selector: 'select[name="contact.will_they_sell_on_termz"]' },
       { name: 'Mortgage Balance', selector: 'input[placeholder="Current mortgage balance?"]' },
       { name: 'Monthly Payment', selector: 'input[placeholder="Monthly payment to the bank? (PITI)"]' },
+      { name: 'Potential Rent', selector: 'input[placeholder="potential monthly lease option amount"]' },
       { name: 'Condition', selector: 'textarea[name="contact.property_condition"]' },
       { name: 'Zillow Link', selector: 'input[name="contact.link_to_zillow"]' },
       // V4: New field
