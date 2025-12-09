@@ -53,7 +53,7 @@
   
   // IMPORTANT: Replace with your GitHub raw URL after uploading files
   // Format: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/
-  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@v1.0.6/';
+  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@v1.0.7/';
 
   // Module files to load (in order)
   var MODULES = [
