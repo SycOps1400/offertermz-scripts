@@ -105,12 +105,14 @@
       transform: translateX(-100%);
   }
     .ot-panel-right {
-      top: 0;
-      right: 0;
-      width: 45vw;
-      height: 100vh;
-      transform: translateX(100%);
-  }
+  top: 0;
+  right: 0;
+  width: 42vw;
+  min-width: 450px;
+  max-width: 600px;
+  height: 100vh;
+  transform: translateX(100%);
+}
     
     .ot-panel-top {
       position: fixed;
