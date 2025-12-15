@@ -48,12 +48,23 @@
   'use strict';
 
   // ═══════════════════════════════════════════════════════════════════════
-  // CONFIGURATION - UPDATE THIS WITH YOUR GITHUB URL
+  // CONFIGURATION - SANDBOX DETECTION
   // ═══════════════════════════════════════════════════════════════════════
   
-  // IMPORTANT: Replace with your GitHub raw URL after uploading files
-  // Format: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/
-  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@v1.0.7/';
+  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5'; // OfferTermz Sandbox account
+  
+  // Detect location ID from URL (GHL format: /location/LOCATION_ID/...)
+  function getCurrentLocationId() {
+    var match = window.location.pathname.match(/\/location\/([^\/]+)/);
+    return match ? match[1] : null;
+  }
+  
+  var currentLocationId = getCurrentLocationId();
+  var IS_SANDBOX = (currentLocationId === SANDBOX_LOCATION_ID);
+  
+  // Use dev branch for sandbox, main branch for everyone else
+  var GITHUB_BRANCH = IS_SANDBOX ? 'dev' : 'main';
+  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + GITHUB_BRANCH + '/';
 
   // Module files to load (in order)
   var MODULES = [
