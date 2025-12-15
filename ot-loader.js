@@ -47,23 +47,35 @@
 (function() {
   'use strict';
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // CONFIGURATION - UPDATE THIS WITH YOUR GITHUB URL
+ // ═══════════════════════════════════════════════════════════════════════
+  // CONFIGURATION - SANDBOX VS PRODUCTION
   // ═══════════════════════════════════════════════════════════════════════
   
-  // IMPORTANT: Replace with your GitHub raw URL after uploading files
-  // Format: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/
-  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@v1.0.7/';
+  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5'; // OfferTermz Sandbox account
+  var PRODUCTION_VERSION = 'v1.0.7'; // Update this when releasing new versions
+  
+  // Detect location ID from URL
+  function getCurrentLocationId() {
+    var match = window.location.pathname.match(/\/location\/([^\/]+)/);
+    return match ? match[1] : null;
+  }
+  
+  var currentLocationId = getCurrentLocationId();
+  var IS_SANDBOX = (currentLocationId === SANDBOX_LOCATION_ID);
+  
+  // Sandbox: raw GitHub (always fresh) | Production: jsDelivr CDN (fast, cached)
+  var GITHUB_BASE_URL = IS_SANDBOX 
+    ? 'https://raw.githubusercontent.com/SycOps1400/offertermz-scripts/dev/'
+    : 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + PRODUCTION_VERSION + '/';
 
   // Module files to load (in order)
   var MODULES = [
-    'ot-styles.js',      // CSS styles (load first)
-    'ot-modals.js',      // Modal system
-    'ot-panels.js',      // Calculator, Script, Comps panels
-    'ot-submit.js',      // Deal Token submission + coach blocking
-    'ot-sam-help.js'     // Field help icons
+    'ot-styles.js',
+    'ot-modals.js',
+    'ot-panels.js',
+    'ot-submit.js',
+    'ot-sam-help.js'
   ];
-
   // ═══════════════════════════════════════════════════════════════════════
   // DEBUG MODE & LOGGING
   // ═══════════════════════════════════════════════════════════════════════
