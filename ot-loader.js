@@ -47,13 +47,14 @@
 (function() {
   'use strict';
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // CONFIGURATION -- SANDBOX DETECTION
+ // ═══════════════════════════════════════════════════════════════════════
+  // CONFIGURATION - SANDBOX VS PRODUCTION
   // ═══════════════════════════════════════════════════════════════════════
   
   var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5'; // OfferTermz Sandbox account
+  var PRODUCTION_VERSION = 'v1.0.7'; // Update this when releasing new versions
   
-  // Detect location ID from URL (GHL format: /location/LOCATION_ID/...)
+  // Detect location ID from URL
   function getCurrentLocationId() {
     var match = window.location.pathname.match(/\/location\/([^\/]+)/);
     return match ? match[1] : null;
@@ -62,19 +63,19 @@
   var currentLocationId = getCurrentLocationId();
   var IS_SANDBOX = (currentLocationId === SANDBOX_LOCATION_ID);
   
-  // Use dev branch for sandbox, main branch for everyone else
-  var GITHUB_BRANCH = IS_SANDBOX ? 'dev' : 'main';
-  var GITHUB_BASE_URL = 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + GITHUB_BRANCH + '/';
+  // Sandbox: raw GitHub (always fresh) | Production: jsDelivr CDN (fast, cached)
+  var GITHUB_BASE_URL = IS_SANDBOX 
+    ? 'https://raw.githubusercontent.com/SycOps1400/offertermz-scripts/dev/'
+    : 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + PRODUCTION_VERSION + '/';
 
   // Module files to load (in order)
   var MODULES = [
-    'ot-styles.js',      // CSS styles (load first)
-    'ot-modals.js',      // Modal system
-    'ot-panels.js',      // Calculator, Script, Comps panels
-    'ot-submit.js',      // Deal Token submission + coach blocking
-    'ot-sam-help.js'     // Field help icons
+    'ot-styles.js',
+    'ot-modals.js',
+    'ot-panels.js',
+    'ot-submit.js',
+    'ot-sam-help.js'
   ];
-
   // ═══════════════════════════════════════════════════════════════════════
   // DEBUG MODE & LOGGING
   // ═══════════════════════════════════════════════════════════════════════
