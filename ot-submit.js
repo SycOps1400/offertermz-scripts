@@ -45,7 +45,7 @@
   // CONFIGURATION
   // ═══════════════════════════════════════════════════════════════════════
 
-  var WEBHOOK_URL = 'https://hook.us1.make.com/gwansniortmd3r1y11c85xasvrkrc539';
+  var WEBHOOK_URL = 'https://delicate-voice-d54e.ahmed-d77.workers.dev';
   var COACH_LOCATION_ID = '7Ab8lel9dfY7xJBnMOrF';
   var SUBMISSION_TIMEOUT_MS = 60000; // V3: 60 second failsafe timeout
 
