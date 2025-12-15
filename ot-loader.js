@@ -48,7 +48,7 @@
   'use strict';
 
   // ═══════════════════════════════════════════════════════════════════════
-  // CONFIGURATION - SANDBOX DETECTION
+  // CONFIGURATION -- SANDBOX DETECTION
   // ═══════════════════════════════════════════════════════════════════════
   
   var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5'; // OfferTermz Sandbox account
