@@ -1,7 +1,13 @@
-  /**
+/**
  * ═══════════════════════════════════════════════════════════════════════════
  * OfferTermz Panels Module
  * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * *** VERSION 4 ***
+ * UPDATES FROM V3:
+ * - Get Comps now auto-opens Zillow when address validates successfully
+ * - Added hint text during validation: "Zillow will open automatically..."
+ * - Friendly fallback message if browser blocks the popup
  * 
  * *** VERSION 3 ***
  * UPDATES FROM V2:
@@ -27,9 +33,9 @@
  * - Get Comps - Zillow lookup with address validation
  * 
  * CONFIGURATION:
- * - Line 48: Google Doc URL for sales scripts
- * - Line 49: Calculator URL
- * - Line 52-57: Script tab anchors for different deal types
+ * - Line 52: Google Doc URL for sales scripts
+ * - Line 53: Calculator URL
+ * - Line 56-61: Script tab anchors for different deal types
  * 
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -363,7 +369,7 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════════
-  // COMPS PANEL (V3: Added escape key, XSS protection)
+  // COMPS PANEL (V4: Auto-open Zillow, friendly fallback)
   // ═══════════════════════════════════════════════════════════════════════
 
   // V3: Function to remove comps overlay with proper cleanup
@@ -385,6 +391,7 @@
     overlay.id = 'ot-comps-overlay';
     overlay.className = 'ot-sam-overlay';
     
+    // V4: Added hint text about Zillow auto-opening
     overlay.innerHTML = 
       '<div class="ot-sam-modal">' +
         '<div class="ot-sam-header">' +
@@ -397,6 +404,7 @@
           '<div class="ot-sam-progress-fill" id="ot-comps-progress-fill"></div>' +
         '</div>' +
         '<div class="ot-sam-progress-text" id="ot-comps-progress-text">0% done</div>' +
+        '<div id="ot-comps-hint" style="text-align: center; margin-top: 16px; font-size: 14px; color: #6b7280;">Hang tight — Zillow will open automatically once the address checks out ✓</div>' +
       '</div>';
     
     document.body.appendChild(overlay);
@@ -537,38 +545,50 @@
     document.getElementById('ot-comps-error-btn').onclick = removeCompsOverlay;
   }
 
+  // V4: Renamed and updated - now auto-opens Zillow with fallback
   function showCompsSuccessResult(address) {
     var overlay = document.getElementById('ot-comps-overlay');
     if (!overlay) return;
     
     var zillowURL = buildZillowURL(address);
-    // V3: Escape address parts for safe display
-    var fullAddress = [
-      escapeHtml(address.street), 
-      escapeHtml(address.city), 
-      escapeHtml(address.state), 
-      escapeHtml(address.postal)
-    ].filter(Boolean).join(', ');
     
-    overlay.innerHTML = 
-      '<div class="ot-sam-modal">' +
-        '<div class="ot-sam-header">' +
-          '<div class="ot-sam-avatar">🎯</div>' +
-          '<div class="ot-sam-title" style="color: #059669;">Address Verified!</div>' +
-          '<div class="ot-sam-subtitle">' + fullAddress + '</div>' +
-        '</div>' +
-        '<div style="padding: 20px 30px 30px; text-align: center;">' +
-          '<a id="ot-comps-zillow-link" href="' + zillowURL + '" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%); color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(249,96,58,0.3);">Open Zillow Comps →</a>' +
-          '<div style="margin-top: 16px;">' +
-            '<button id="ot-comps-cancel-btn" style="background: none; border: none; color: #6b7280; font-size: 14px; cursor: pointer;">Cancel</button>' +
+    // V4: Try to auto-open Zillow
+    var zillowWindow = window.open(zillowURL, '_blank');
+    
+    // Check if popup was blocked
+    if (zillowWindow && !zillowWindow.closed) {
+      // Success! Popup opened, close the overlay
+      removeCompsOverlay();
+    } else {
+      // Popup was blocked - show friendly fallback
+      var fullAddress = [
+        escapeHtml(address.street), 
+        escapeHtml(address.city), 
+        escapeHtml(address.state), 
+        escapeHtml(address.postal)
+      ].filter(Boolean).join(', ');
+      
+      overlay.innerHTML = 
+        '<div class="ot-sam-modal">' +
+          '<div class="ot-sam-header">' +
+            '<div class="ot-sam-avatar">🛡️</div>' +
+            '<div class="ot-sam-title" style="color: #059669;">Almost there!</div>' +
+            '<div class="ot-sam-subtitle">' + fullAddress + '</div>' +
           '</div>' +
-        '</div>' +
-      '</div>';
-    
-    document.getElementById('ot-comps-zillow-link').onclick = function() {
-      setTimeout(removeCompsOverlay, 100);
-    };
-    document.getElementById('ot-comps-cancel-btn').onclick = removeCompsOverlay;
+          '<div style="padding: 20px 30px; text-align: center;">' +
+            '<p style="font-size: 15px; color: #555; margin-bottom: 20px;">Your browser is being a little overprotective.<br>Just click below and we\'ll take you straight to Zillow.</p>' +
+            '<a id="ot-comps-zillow-link" href="' + zillowURL + '" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%); color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(249,96,58,0.3);">Open Zillow →</a>' +
+            '<div style="margin-top: 16px;">' +
+              '<button id="ot-comps-cancel-btn" style="background: none; border: none; color: #6b7280; font-size: 14px; cursor: pointer;">Cancel</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      
+      document.getElementById('ot-comps-zillow-link').onclick = function() {
+        setTimeout(removeCompsOverlay, 100);
+      };
+      document.getElementById('ot-comps-cancel-btn').onclick = removeCompsOverlay;
+    }
   }
 
   function startCompsReading() {
@@ -682,9 +702,9 @@
     getPropertyAddress: getPropertyAddress,
     closeCalculator: closeCalculatorPanel,
     closeScript: closeScriptPanel,
-    closeComps: removeCompsOverlay  // V3: Expose comps close
+    closeComps: removeCompsOverlay
   };
 
-  log('✅ ot-panels.js v3 loaded');
+  log('✅ ot-panels.js v4 loaded');
 
 })();
