@@ -51,7 +51,7 @@
   // CONFIGURATION - SANDBOX VS PRODUCTION
   // ═══════════════════════════════════════════════════════════════════════
   
-  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5'; // OfferTermz Sandbox account
+  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5h'; // OfferTermz Sandbox account
   var PRODUCTION_VERSION = 'v1.0.7'; // Update this when releasing new versions
   
   // Detect location ID from URL
