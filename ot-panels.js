@@ -1,43 +1,12 @@
-  /**
+ /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Panels Module
- * ═══════════════════════════════════════════════════════════════════════════
- * 
- * *** VERSION 3 ***
- * UPDATES FROM V2:
- * - Added XSS protection (escapeHtml) for all displayed address values
- * - Added Escape key handler to close comps overlay
- * - Consistent debug logging (uses log() helper)
- * - Comps overlay escape handler properly cleaned up
- * 
- * *** VERSION 2 ***
- * UPDATES:
- * - Fixed script panel toggle: now switches to new dealType instead of just closing
- * - Fixed ZIP code validation: now accepts ZIP+4 format (12345-6789)
- * - Added fallback alerts when OT_Modals not available
- * - Button text now properly resets on panel close via X button
- * 
- * FILE: ot-panels.js
- * PURPOSE: Slide-out panels for Calculator, Script, and Comps
- * EDIT THIS WHEN: Changing panel behavior, URLs, iframe stuff, Zillow logic
- * 
- * PANELS INCLUDED:
- * - Deal Analyzer (Calculator) - Left slide panel
- * - Show Script - Right slide panel
- * - Get Comps - Zillow lookup with address validation
- * 
- * CONFIGURATION:
- * - Line 48: Google Doc URL for sales scripts
- * - Line 49: Calculator URL
- * - Line 52-57: Script tab anchors for different deal types
- * 
+ * OfferTermz Panels Module v4
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 (function() {
   'use strict';
 
-  // Prevent double-loading
   if (window.OT_PANELS_LOADED) return;
   window.OT_PANELS_LOADED = true;
 
@@ -48,7 +17,6 @@
   var SCRIPT_DOC_BASE_URL = 'https://docs.google.com/document/d/1AP1yqYxljROHvQLNYVTFnSdUrACG3bWCEcCsmiEShQQ/preview';
   var CALCULATOR_URL = 'https://offertermz.com/calculator';
 
-  // Script tab anchors for different deal types
   var SCRIPT_TABS = {
     'subject-to': 't.u6vs1q5zzo82',
     'wrap': 't.64jigev0vd1x',
@@ -56,7 +24,6 @@
     'seller-financing': 't.g5glmqw372ao'
   };
 
-  // US States for address validation
   var US_STATES = {
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
     'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
@@ -70,14 +37,11 @@
     'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
   };
 
-  // Track current script deal type for smart toggle
   var currentScriptDealType = null;
-  
-  // V3: Track comps escape handler for cleanup
   var compsEscHandler = null;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // V3: DEBUG LOGGING
+  // DEBUG LOGGING
   // ═══════════════════════════════════════════════════════════════════════
 
   function log(message) {
@@ -101,7 +65,6 @@
     return val.replace(/[<>]/g, '').trim();
   }
 
-  // V3: XSS protection helper
   function escapeHtml(text) {
     if (!text) return '';
     var div = document.createElement('div');
@@ -109,7 +72,6 @@
     return div.innerHTML;
   }
 
-  // Fallback alert helper
   function showFallbackAlert(message) {
     alert(message);
   }
@@ -144,7 +106,6 @@
     });
   }
 
-  // Fixed ZIP validation to accept ZIP+4 format
   function isValidZipCode(zip) {
     if (!zip) return false;
     return /^\d{5}(-\d{4})?$/.test(zip.trim());
@@ -363,10 +324,9 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════════
-  // COMPS PANEL (V3: Added escape key, XSS protection)
+  // COMPS PANEL - V4: Auto-open Zillow with friendly fallback
   // ═══════════════════════════════════════════════════════════════════════
 
-  // V3: Function to remove comps overlay with proper cleanup
   function removeCompsOverlay() {
     var overlay = document.getElementById('ot-comps-overlay');
     if (overlay) overlay.remove();
@@ -397,11 +357,11 @@
           '<div class="ot-sam-progress-fill" id="ot-comps-progress-fill"></div>' +
         '</div>' +
         '<div class="ot-sam-progress-text" id="ot-comps-progress-text">0% done</div>' +
+        '<div id="ot-comps-hint" style="text-align: center; margin-top: 16px; font-size: 14px; color: #6b7280;">Hang tight — Zillow will open automatically once the address checks out ✓</div>' +
       '</div>';
     
     document.body.appendChild(overlay);
     
-    // V3: Add escape key handler
     if (compsEscHandler) {
       document.removeEventListener('keydown', compsEscHandler);
     }
@@ -420,7 +380,6 @@
     if (text) text.textContent = percent + '% done';
   }
 
-  // V3: XSS-safe field display using DOM methods
   function addCompsField(fieldName, status, value) {
     var container = document.getElementById('ot-comps-fields');
     if (!container) return null;
@@ -445,7 +404,6 @@
     
     fieldDiv.className = 'ot-sam-field ' + statusClass;
     
-    // V3: Build content safely using DOM methods (XSS protection)
     var iconSpan = document.createElement('span');
     iconSpan.className = 'ot-sam-field-icon';
     iconSpan.textContent = icon;
@@ -472,7 +430,6 @@
     return fieldDiv;
   }
 
-  // V3: Update field display safely
   function updateCompsField(fieldDiv, fieldName, status, value) {
     if (!fieldDiv) return;
     
@@ -484,7 +441,7 @@
     }
     
     fieldDiv.className = 'ot-sam-field ' + statusClass;
-    fieldDiv.innerHTML = ''; // Clear existing
+    fieldDiv.innerHTML = '';
     
     var iconSpan = document.createElement('span');
     iconSpan.className = 'ot-sam-field-icon';
@@ -514,7 +471,6 @@
     var overlay = document.getElementById('ot-comps-overlay');
     if (!overlay) return;
     
-    // V3: Build error list safely
     var errorListItems = errors.map(function(e) {
       return '• ' + escapeHtml(e);
     }).join('<br>');
@@ -542,33 +498,44 @@
     if (!overlay) return;
     
     var zillowURL = buildZillowURL(address);
-    // V3: Escape address parts for safe display
-    var fullAddress = [
-      escapeHtml(address.street), 
-      escapeHtml(address.city), 
-      escapeHtml(address.state), 
-      escapeHtml(address.postal)
-    ].filter(Boolean).join(', ');
     
-    overlay.innerHTML = 
-      '<div class="ot-sam-modal">' +
-        '<div class="ot-sam-header">' +
-          '<div class="ot-sam-avatar">🎯</div>' +
-          '<div class="ot-sam-title" style="color: #059669;">Address Verified!</div>' +
-          '<div class="ot-sam-subtitle">' + fullAddress + '</div>' +
-        '</div>' +
-        '<div style="padding: 20px 30px 30px; text-align: center;">' +
-          '<a id="ot-comps-zillow-link" href="' + zillowURL + '" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%); color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(249,96,58,0.3);">Open Zillow Comps →</a>' +
-          '<div style="margin-top: 16px;">' +
-            '<button id="ot-comps-cancel-btn" style="background: none; border: none; color: #6b7280; font-size: 14px; cursor: pointer;">Cancel</button>' +
+    // Try to auto-open Zillow
+    var zillowWindow = window.open(zillowURL, '_blank');
+    
+    // Check if popup was blocked
+    if (zillowWindow && !zillowWindow.closed) {
+      // Success - popup opened, close overlay
+      removeCompsOverlay();
+    } else {
+      // Popup was blocked - show friendly fallback
+      var fullAddress = [
+        escapeHtml(address.street), 
+        escapeHtml(address.city), 
+        escapeHtml(address.state), 
+        escapeHtml(address.postal)
+      ].filter(Boolean).join(', ');
+      
+      overlay.innerHTML = 
+        '<div class="ot-sam-modal">' +
+          '<div class="ot-sam-header">' +
+            '<div class="ot-sam-avatar">🛡️</div>' +
+            '<div class="ot-sam-title" style="color: #059669;">Almost there!</div>' +
+            '<div class="ot-sam-subtitle">' + fullAddress + '</div>' +
           '</div>' +
-        '</div>' +
-      '</div>';
-    
-    document.getElementById('ot-comps-zillow-link').onclick = function() {
-      setTimeout(removeCompsOverlay, 100);
-    };
-    document.getElementById('ot-comps-cancel-btn').onclick = removeCompsOverlay;
+          '<div style="padding: 20px 30px; text-align: center;">' +
+            '<p style="font-size: 15px; color: #555; margin-bottom: 20px;">Your browser is being a little overprotective.<br>Just click below and we\'ll take you straight to Zillow.</p>' +
+            '<a id="ot-comps-zillow-link" href="' + zillowURL + '" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%); color: white; padding: 14px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 2px 8px rgba(249,96,58,0.3);">Open Zillow →</a>' +
+            '<div style="margin-top: 16px;">' +
+              '<button id="ot-comps-cancel-btn" style="background: none; border: none; color: #6b7280; font-size: 14px; cursor: pointer;">Cancel</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      
+      document.getElementById('ot-comps-zillow-link').onclick = function() {
+        setTimeout(removeCompsOverlay, 100);
+      };
+      document.getElementById('ot-comps-cancel-btn').onclick = removeCompsOverlay;
+    }
   }
 
   function startCompsReading() {
@@ -682,9 +649,9 @@
     getPropertyAddress: getPropertyAddress,
     closeCalculator: closeCalculatorPanel,
     closeScript: closeScriptPanel,
-    closeComps: removeCompsOverlay  // V3: Expose comps close
+    closeComps: removeCompsOverlay
   };
 
-  log('✅ ot-panels.js v3 loaded');
+  log('✅ ot-panels.js v4 loaded');
 
 })();
