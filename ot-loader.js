@@ -1,60 +1,27 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Loader file
- * ═══════════════════════════════════════════════════════════════════════════
- * 
- * *** VERSION 4 ***
- * UPDATES FROM V3:
- * - MutationObserver now disconnects after header buttons are created
- * - Interval cleanup is more thorough
- * - All logging uses consistent log() helper
- * 
- * *** VERSION 3 ***
- * UPDATES FROM V2:
- * - Confetti now loads FIRST (before other modules) so it's ready for success modal
- * - Smarter cache busting: uses daily version instead of every page load
- * - Reduced console logging: only errors show in production, debug mode available
- * - Added OT_DEBUG flag for verbose logging when troubleshooting
- * 
- * *** VERSION 2 ***
- * UPDATES:
- * - Fixed race condition: Buttons now disabled until all modules load
- * - Added OT_MODULES_READY flag for other scripts to check
- * - Buttons show "Loading..." state until ready
- * - Added error tracking for failed module loads
- * 
- * FILE: ot-loader.js
- * PURPOSE: Loads all OfferTermz modules and creates header buttons
- * THIS IS THE ONLY FILE THAT GOES IN GHL CUSTOM JS
- * 
- * EDIT THIS WHEN: 
- * - Adding new modules
- * - Changing GitHub URLs (after moving to your own repo)
- * - Adding/removing header buttons
- * 
- * SETUP:
- * 1. Upload all ot-*.js files to GitHub
- * 2. Update the GITHUB_BASE_URL below with your repo URL
- * 3. Copy this entire file into GHL Custom JS
- * 
- * DEBUG MODE:
- * - Set window.OT_DEBUG = true in browser console before page load
- * - Or add ?ot_debug=true to URL
- * 
+ * OfferTermz Loader v5
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
 (function() {
   'use strict';
 
- // ═══════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
   // CONFIGURATION - SANDBOX VS PRODUCTION
   // ═══════════════════════════════════════════════════════════════════════
   
-  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5h'; // OfferTermz Sandbox account
-  var PRODUCTION_VERSION = 'v1.0.7'; // Update this when releasing new versions
+  var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5h';
   
-  // Detect location ID from URL
+  function getLoaderVersion() {
+    var scripts = document.querySelectorAll('script[src*="offertermz-scripts"]');
+    for (var i = 0; i < scripts.length; i++) {
+      var match = scripts[i].src.match(/@(v[\d.]+)\//);
+      if (match) return match[1];
+    }
+    return 'dev';
+  }
+  
   function getCurrentLocationId() {
     var match = window.location.pathname.match(/\/location\/([^\/]+)/);
     return match ? match[1] : null;
@@ -62,13 +29,12 @@
   
   var currentLocationId = getCurrentLocationId();
   var IS_SANDBOX = (currentLocationId === SANDBOX_LOCATION_ID);
+  var CURRENT_VERSION = getLoaderVersion();
   
-  // Sandbox: raw GitHub (always fresh) | Production: jsDelivr CDN (fast, cached)
   var GITHUB_BASE_URL = IS_SANDBOX 
-    ? 'https://raw.githubusercontent.com/SycOps1400/offertermz-scripts/dev/'
-    : 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + PRODUCTION_VERSION + '/';
+    ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@dev/'
+    : 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + CURRENT_VERSION + '/';
 
-  // Module files to load (in order)
   var MODULES = [
     'ot-styles.js',
     'ot-modals.js',
@@ -76,16 +42,15 @@
     'ot-submit.js',
     'ot-sam-help.js'
   ];
+
   // ═══════════════════════════════════════════════════════════════════════
   // DEBUG MODE & LOGGING
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Check for debug mode via URL param or global flag
   var urlParams;
   try {
     urlParams = new URLSearchParams(window.location.search);
   } catch (e) {
-    // Fallback for browsers without URLSearchParams
     urlParams = { get: function() { return null; } };
   }
   var DEBUG = window.OT_DEBUG || urlParams.get('ot_debug') === 'true';
@@ -97,22 +62,17 @@
   }
 
   function logError(message) {
-    // Errors always show
     console.error(message);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // SMARTER CACHE BUSTING
+  // CACHE BUSTING
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Use daily cache version instead of every page load
-  // This means scripts cache for 24 hours, reducing load times
-  // To force refresh: add ?ot_nocache=true to URL
   function getCacheVersion() {
     if (urlParams.get('ot_nocache') === 'true') {
-      return Date.now(); // Force fresh load
+      return Date.now();
     }
-    // Daily version: changes once per day
     var today = new Date();
     return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
   }
@@ -129,7 +89,6 @@
   var failedModules = [];
   var totalModules = MODULES.length;
 
-  // V4: Track observers/intervals for cleanup
   var appObserver = null;
   var appCheckInterval = null;
   var urlCheckInterval = null;
@@ -168,7 +127,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // LOAD CONFETTI FIRST (before modules)
+  // LOAD CONFETTI
   // ═══════════════════════════════════════════════════════════════════════
 
   function loadConfetti(callback) {
@@ -180,7 +139,6 @@
       callback();
     };
     confettiScript.onerror = function() {
-      // Non-critical - continue without confetti
       log('⚠️ Confetti failed to load (non-critical)');
       callback();
     };
@@ -209,10 +167,10 @@
   }
 
   function createHeaderButtons() {
-    if (document.getElementById('ot-header-buttons')) return false; // Already exists
+    if (document.getElementById('ot-header-buttons')) return false;
     
     var headerControls = document.querySelector('.hl_header--controls');
-    if (!headerControls) return false; // Can't create yet
+    if (!headerControls) return false;
     
     var container = document.createElement('div');
     container.id = 'ot-header-buttons';
@@ -235,7 +193,7 @@
     });
     
     headerControls.insertBefore(container, headerControls.firstChild);
-    return true; // Successfully created
+    return true;
   }
 
   function enableButtons() {
@@ -263,7 +221,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // V4: CLEANUP FUNCTION
+  // CLEANUP
   // ═══════════════════════════════════════════════════════════════════════
 
   function stopAppWatching() {
@@ -298,7 +256,6 @@
   function initializeUI() {
     var created = createHeaderButtons();
     if (created) {
-      // V4: Stop watching once buttons are created
       stopAppWatching();
     }
     updateButtonStates();
@@ -330,23 +287,19 @@
   // START LOADING
   // ═══════════════════════════════════════════════════════════════════════
 
-  log('🚀 OfferTermz Loader v4 starting...');
+  log('🚀 OfferTermz Loader v5 starting... (Sandbox: ' + IS_SANDBOX + ')');
   
-  // Load confetti first, then start loading modules
   loadConfetti(function() {
     loadNextModule(0);
   });
 
-  // Watch for GHL dynamic content
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', waitForApp);
   } else {
     waitForApp();
   }
 
-  // V4: Store observer reference for cleanup
   appObserver = new MutationObserver(function() {
-    // Only watch if buttons don't exist yet
     if (!document.getElementById('ot-header-buttons')) {
       waitForApp();
     } else {
@@ -355,7 +308,6 @@
   });
   appObserver.observe(document.body, { childList: true, subtree: true });
 
-  // V4: Store interval reference for cleanup
   var checks = 0;
   appCheckInterval = setInterval(function() {
     waitForApp();
@@ -365,7 +317,6 @@
     }
   }, 500);
 
-  // V4: Separate interval for URL changes (this one should keep running for SPA navigation)
   urlCheckInterval = setInterval(checkURLChange, 1000);
 
 })();
