@@ -727,6 +727,33 @@
       to { transform: translateY(0); opacity: 1; }
     }
 
+/* ─────────────────────────────────────────────────────────────────────
+       GHL DASHBOARD WIDGET STYLING
+       ───────────────────────────────────────────────────────────────────── */
+    
+    /* Widget Header Bar (Stage Distribution style) */
+    .hl-card-header {
+      background: linear-gradient(135deg, #34434a 0%, #283035 50%, #1a2328 100%) !important;
+      border-bottom: 3px solid #f9603a !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .hl-card-header .hl-text-md-medium,
+    .hl-card-header p[role="heading"] {
+      color: #ffffff !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Widget Title Text Above Card */
+    .hl-card .title-text,
+    .hl-card-content .title-text {
+      color: #34434a !important;
+      font-weight: 600 !important;
+      font-size: 1.25rem !important;
+      letter-spacing: -0.01em;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+    
     /* ─────────────────────────────────────────────────────────────────────
        RESPONSIVE
        ───────────────────────────────────────────────────────────────────── */
