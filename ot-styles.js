@@ -37,7 +37,7 @@
     }
     
     .ot-header-btn {
-      background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+      background: linear-gradient(135deg, #34434a 0%, #2a3439 100%);
       color: white;
       border: none;
       padding: 8px 16px;
