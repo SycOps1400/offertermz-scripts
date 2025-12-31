@@ -32,7 +32,7 @@
   var CURRENT_VERSION = getLoaderVersion();
   
   var GITHUB_BASE_URL = IS_SANDBOX 
-  ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@sandbox-001/'
+  ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@sandbox-002/'
   : 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@' + CURRENT_VERSION + '/';
 
   var MODULES = [
