@@ -101,7 +101,6 @@
       left: 0;
       width: 42vw;
       min-width: 450px;
-      max-width: 600px;
       height: 100vh;
       transform: translateX(-100%);
   }
@@ -110,7 +109,6 @@
   right: 0;
   width: 42vw;
   min-width: 450px;
-  max-width: 600px;
   height: 100vh;
   transform: translateX(100%);
 }
