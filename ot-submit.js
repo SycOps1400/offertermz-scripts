@@ -120,6 +120,34 @@
     return val.replace(/[<>]/g, '').trim();
   }
 
+  function getFieldByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === labelText) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var input = container.querySelector('input, select, textarea');
+          if (input) return input.value.replace(/[<>]/g, '').trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  function getDropdownByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === labelText) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var dropdown = container.querySelector('.hr-base-selection-overlay__wrapper');
+          if (dropdown) return dropdown.textContent.trim();
+        }
+      }
+    }
+    return '';
+  }
+  
   // V4: Helper for getting select dropdown text (for dropdowns that use button display)
   function getSelectDisplayValue(selector) {
     // First try the standard select value
