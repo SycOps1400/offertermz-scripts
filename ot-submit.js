@@ -455,27 +455,26 @@
 
   function startSAMReading(locationId) {
 var fieldsToRead = [
-      { name: 'First Name', selector: 'input[name="contact.first_name"]' },
-      { name: 'Last Name', selector: 'input[name="contact.last_name"]' },
-      { name: 'Phone', selector: 'input[name="contact.phone"]' },
-      { name: 'Street Address', selector: 'input[name="contact.address1"]' },
-      { name: 'City', selector: 'input[name="contact.city"]' },
-      { name: 'State', selector: 'input[name="contact.state"]' },
-      { name: 'Zip Code', selector: 'input[name="contact.postal_code"]' },
-      { name: 'Bedrooms', selector: 'input[name="contact.number_of_bedrooms"]' },
-      { name: 'Bathrooms', selector: 'input[name="contact.number_of_bathrooms"]' },
-      { name: 'Square Feet', selector: 'input[name="contact.square_footage"]' },
-      { name: 'Asking Price', selector: 'input[placeholder="Asking Price"]' },
-      { name: 'Repair Cost', selector: 'input[placeholder="Repairs cost will be about...."]' },
-      { name: 'ARV', selector: 'input[placeholder="After Repair Value (ARV)"]' },
-      { name: 'Sell on Terms?', selector: 'select[name="contact.will_they_sell_on_termz"]' },
-      { name: 'Mortgage Balance', selector: 'input[placeholder="Current mortgage balance?"]' },
-      { name: 'Monthly Payment', selector: 'input[placeholder="Monthly payment to the bank? (PITI)"]' },
-      { name: 'Potential Rent', selector: 'input[placeholder="potential monthly lease option amount"]' },
-      { name: 'Condition', selector: 'textarea[name="contact.property_condition"]' },
-      { name: 'Zillow Link', selector: 'input[name="contact.link_to_zillow"]' },
-      // V4: New field
-      { name: 'Lead Came From', selector: 'select[name="contact.the_lead_came_from"]' }
+      { name: 'First Name', selector: null, label: 'First Name' },
+      { name: 'Last Name', selector: null, label: 'Last Name' },
+      { name: 'Phone', selector: null, label: 'Phone' },
+      { name: 'Street Address', selector: null, label: 'Street Address' },
+      { name: 'City', selector: null, label: 'City' },
+      { name: 'State', selector: null, label: 'State' },
+      { name: 'Zip Code', selector: null, label: 'Postal Code' },
+      { name: 'Bedrooms', selector: null, label: 'Number of Bedrooms' },
+      { name: 'Bathrooms', selector: null, label: 'Number of Bathrooms' },
+      { name: 'Square Feet', selector: null, label: 'Square Footage' },
+      { name: 'Asking Price', selector: null, label: 'Asking Price' },
+      { name: 'Repair Cost', selector: null, label: 'Repairs cost will be about....' },
+      { name: 'ARV', selector: null, label: 'After Repair Value (ARV)' },
+      { name: 'Sell on Terms?', selector: null, label: 'Will they sell on Termz?', dropdown: true },
+      { name: 'Mortgage Balance', selector: null, label: 'Current mortgage balance?' },
+      { name: 'Monthly Payment', selector: null, label: 'Monthly payment to the bank? (PITI)' },
+      { name: 'Potential Rent', selector: null, label: 'potential monthly lease option amount' },
+      { name: 'Condition', selector: null, label: 'Property condition' },
+      { name: 'Zillow Link', selector: null, label: 'Link to Zillow' },
+      { name: 'Lead Came From', selector: null, label: 'The lead Came From?', dropdown: true }
     ];
     
     fieldsToRead.forEach(function(f) {
@@ -503,7 +502,14 @@ var fieldsToRead = [
     updateSAMField(field.name, 'reading', '');
     updateSAMProgress(index, fields.length);
     
-    var element = document.querySelector(field.selector);
+    var element = null;
+      var labelEls = document.querySelectorAll('span.hr-form-item-label__text');
+      for (var li = 0; li < labelEls.length; li++) {
+        if (labelEls[li].textContent.trim() === field.label) {
+          element = labelEls[li].closest('.hr-form-item__container');
+          break;
+        }
+      }
     
     setTimeout(function() {
       if (!window.OT_IS_SUBMITTING) {
@@ -512,9 +518,15 @@ var fieldsToRead = [
         return;
       }
       
-      var value = '';
+ var value = '';
       if (element) {
-        value = element.value || element.textContent || '';
+        if (field.dropdown) {
+          var dEl = element.querySelector('.hr-base-selection-overlay__wrapper');
+          value = dEl ? dEl.textContent.trim() : '';
+        } else {
+          var iEl = element.querySelector('input, select, textarea');
+          value = iEl ? iEl.value.trim() : '';
+        }
         element.scrollIntoView({ behavior: 'auto', block: 'center' });
       }
       
