@@ -65,6 +65,21 @@
     return val.replace(/[<>]/g, '').trim();
   }
 
+ function getFieldByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === labelText) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var input = container.querySelector('input, select, textarea');
+          if (input) return input.value.replace(/[<>]/g, '').trim();
+        }
+      }
+    }
+    return '';
+  }
+
+ 
   function escapeHtml(text) {
     if (!text) return '';
     var div = document.createElement('div');
@@ -131,12 +146,12 @@ function checkSectionStatus() {
     };
   }
 
-  function getPropertyAddress() {
+ function getPropertyAddress() {
     return {
-      street: getFieldValue('input[name="contact.address1"]'),
-      city: getFieldValue('input[name="contact.city"]'),
-      state: getFieldValue('input[name="contact.state"]'),
-      postal: getFieldValue('input[name="contact.postal_code"]')
+      street: getFieldByLabel('Street Address'),
+      city: getFieldByLabel('City'),
+      state: getFieldByLabel('State'),
+      postal: getFieldByLabel('Postal Code')
     };
   }
 
