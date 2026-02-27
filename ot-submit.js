@@ -148,26 +148,26 @@
   }
 
   function checkSectionStatus() {
-    var contactField = document.querySelector('input[name="contact.first_name"]');
-    var contactOpen = false;
-    if (contactField) {
-      var rect = contactField.getBoundingClientRect();
-      contactOpen = rect.height > 0 && rect.width > 0;
-    }
-    
-    var propertyField = document.querySelector('input[name="contact.number_of_bedrooms"]');
-    var propertyOpen = false;
-    if (propertyField) {
-      var rect = propertyField.getBoundingClientRect();
-      propertyOpen = rect.height > 0 && rect.width > 0;
-    }
-    
-    return {
-      contactOpen: contactOpen,
-      propertyOpen: propertyOpen,
-      allOpen: contactOpen && propertyOpen
-    };
+  var contactField = document.querySelector('input[name="contact.first_name"]');
+  var contactOpen = false;
+  if (contactField) {
+    var rect = contactField.getBoundingClientRect();
+    contactOpen = rect.height > 0 && rect.width > 0;
   }
+  
+  var propertyField = document.querySelector('input[name="contact.number_of_bedrooms"]');
+  var propertyOpen = false;
+  if (propertyField) {
+    var rect = propertyField.getBoundingClientRect();
+    propertyOpen = rect.height > 0 && rect.width > 0;
+  }
+  
+  return {
+    contactOpen: contactOpen,
+    propertyOpen: propertyOpen,
+    allOpen: contactOpen && propertyOpen
+  };
+}
 
   // ═══════════════════════════════════════════════════════════════════════
   // FALLBACK ALERT SYSTEM
