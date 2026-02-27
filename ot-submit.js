@@ -140,28 +140,22 @@
     return '';
   }
 
-  function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  function checkSectionStatus() {
+  function isTabOpen(tabTitle) {
+    var tabs = document.querySelectorAll('.hr-collapse-item');
+    for (var i = 0; i < tabs.length; i++) {
+      var titleEl = tabs[i].querySelector('.hr-text');
+      if (titleEl && titleEl.textContent.trim() === tabTitle) {
+        var arrow = tabs[i].querySelector('svg');
+        return arrow ? arrow.classList.contains('rotate-90') : false;
+      }
+    }
+    return false;
   }
 
-  function checkSectionStatus() {
-  var contactField = document.querySelector('input[name="contact.first_name"]');
-  var contactOpen = false;
-  if (contactField) {
-    var rect = contactField.getBoundingClientRect();
-    contactOpen = rect.height > 0 && rect.width > 0;
-  }
-  
-  var propertyField = document.querySelector('input[name="contact.number_of_bedrooms"]');
-  var propertyOpen = false;
-  if (propertyField) {
-    var rect = propertyField.getBoundingClientRect();
-    propertyOpen = rect.height > 0 && rect.width > 0;
-  }
-  
+  var contactOpen = isTabOpen('Contact');
+  var propertyOpen = isTabOpen('Property Information Sheet');
+
   return {
     contactOpen: contactOpen,
     propertyOpen: propertyOpen,
