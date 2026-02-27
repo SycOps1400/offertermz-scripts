@@ -319,34 +319,32 @@
   // FIELD COLLECTION
   // ═══════════════════════════════════════════════════════════════════════
 
-  function getFieldByLabel(labelText) {
-    var labels = document.querySelectorAll('span.hr-form-item-label__text');
-    for (var i = 0; i < labels.length; i++) {
-      if (labels[i].textContent.trim() === labelText) {
-        var container = labels[i].closest('.hr-form-item__container');
-        if (container) {
-          var input = container.querySelector('input, select, textarea');
-          if (input) return input.value.replace(/[<>]/g, '').trim();
-        }
-      }
-    }
-    return '';
+  function getDealFields() {
+    return {
+      sellerFirstName: getFieldByLabel('First Name'),
+      sellerLastName: getFieldByLabel('Last Name'),
+      sellerPhone: getFieldByLabel('Phone'),
+      streetAddress: getFieldByLabel('Street Address'),
+      city: getFieldByLabel('City'),
+      state: getFieldByLabel('State'),
+      postalCode: getFieldByLabel('Postal Code'),
+      bedrooms: getFieldByLabel('Number of Bedrooms'),
+      bathrooms: getFieldByLabel('Number of Bathrooms'),
+      sqft: getFieldByLabel('Square Footage'),
+      askingPrice: getFieldByLabel('Asking Price'),
+      repairCost: getFieldByLabel('Repairs cost will be about....'),
+      arv: getFieldByLabel('After Repair Value (ARV)'),
+      willSellOnTerms: getDropdownByLabel('Will they sell on Termz?'),
+      mortgageBalance: getFieldByLabel('Current mortgage balance?'),
+      monthlyPayment: getFieldByLabel('Monthly payment to the bank? (PITI)'),
+      potentialRent: getFieldByLabel('potential monthly lease option amount'),
+      propertyCondition: getFieldByLabel('Property condition'),
+      zillowLink: getFieldByLabel('Link to Zillow'),
+      leadCameFrom: getDropdownByLabel('The lead Came From?')
+    };
   }
 
-  function getDropdownByLabel(labelText) {
-    var labels = document.querySelectorAll('span.hr-form-item-label__text');
-    for (var i = 0; i < labels.length; i++) {
-      if (labels[i].textContent.trim() === labelText) {
-        var container = labels[i].closest('.hr-form-item__container');
-        if (container) {
-          var dropdown = container.querySelector('.hr-base-selection-overlay__wrapper');
-          if (dropdown) return dropdown.textContent.trim();
-        }
-      }
-    }
-    return '';
-  }
-
+  
   // ═══════════════════════════════════════════════════════════════════════
   // VALIDATION
   // ═══════════════════════════════════════════════════════════════════════
