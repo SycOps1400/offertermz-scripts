@@ -319,30 +319,32 @@
   // FIELD COLLECTION
   // ═══════════════════════════════════════════════════════════════════════
 
-  function getDealFields() {
-    return {
-      sellerFirstName: getFieldValue('input[name="contact.first_name"]'),
-      sellerLastName: getFieldValue('input[name="contact.last_name"]'),
-      sellerPhone: getFieldValue('input[name="contact.phone"]'),
-      streetAddress: getFieldValue('input[name="contact.address1"]'),
-      city: getFieldValue('input[name="contact.city"]'),
-      state: getFieldValue('input[name="contact.state"]'),
-      postalCode: getFieldValue('input[name="contact.postal_code"]'),
-      bedrooms: getFieldValue('input[name="contact.number_of_bedrooms"]'),
-      bathrooms: getFieldValue('input[name="contact.number_of_bathrooms"]'),
-      sqft: getFieldValue('input[name="contact.square_footage"]'),
-      askingPrice: getFieldValue('input[placeholder="Asking Price"]'),
-      repairCost: getFieldValue('input[placeholder="Repairs cost will be about...."]'),
-      arv: getFieldValue('input[placeholder="After Repair Value (ARV)"]'),
-      willSellOnTerms: getFieldValue('select[name="contact.will_they_sell_on_termz"]'),
-      mortgageBalance: getFieldValue('input[placeholder="Current mortgage balance?"]'),
-      monthlyPayment: getFieldValue('input[placeholder="Monthly payment to the bank? (PITI)"]'),
-      potentialRent: getFieldValue('input[placeholder="potential monthly lease option amount"]'),
-      propertyCondition: getFieldValue('textarea[name="contact.property_condition"]'),
-      zillowLink: getFieldValue('input[name="contact.link_to_zillow"]'),
-      // V4: New field
-      leadCameFrom: getFieldValue('select[name="contact.the_lead_came_from"]')
-    };
+  function getFieldByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === labelText) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var input = container.querySelector('input, select, textarea');
+          if (input) return input.value.replace(/[<>]/g, '').trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  function getDropdownByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === labelText) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var dropdown = container.querySelector('.hr-base-selection-overlay__wrapper');
+          if (dropdown) return dropdown.textContent.trim();
+        }
+      }
+    }
+    return '';
   }
 
   // ═══════════════════════════════════════════════════════════════════════
