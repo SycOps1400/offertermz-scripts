@@ -68,7 +68,7 @@
  function getFieldByLabel(labelText) {
     var labels = document.querySelectorAll('span.hr-form-item-label__text');
     for (var i = 0; i < labels.length; i++) {
-      if (labels[i].textContent.trim() === labelText) {
+      if (labels[i].textContent.trim().toLowerCase() === labelText.toLowerCase()) {
         var container = labels[i].closest('.hr-form-item__container');
         if (container) {
           var input = container.querySelector('input, select, textarea');
