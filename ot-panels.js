@@ -79,6 +79,19 @@
     return '';
   }
 
+ function getDropdownByLabel(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim().toLowerCase() === labelText.toLowerCase()) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var dropdown = container.querySelector('.hr-base-selection-overlay__wrapper');
+          if (dropdown) return dropdown.textContent.trim();
+        }
+      }
+    }
+    return '';
+  }
  
   function escapeHtml(text) {
     if (!text) return '';
@@ -132,16 +145,15 @@ function checkSectionStatus() {
   // ═══════════════════════════════════════════════════════════════════════
 
   function collectFieldData() {
-    var termsSelect = document.querySelector('select[name="contact.will_they_sell_on_termz"]');
-    var termsValue = termsSelect ? termsSelect.value : '';
+    var termsValue = getDropdownByLabel('Will they sell on Termz?');
     var termsAvailable = termsValue.toLowerCase() === 'yes' || termsValue === 'true' || termsValue === '1';
     
     return {
-      askingPrice: getFieldValue('input[placeholder="Asking Price"]'),
-      arv: getFieldValue('input[placeholder="After Repair Value (ARV)"]'),
-      repairs: getFieldValue('input[placeholder="Repairs cost will be about...."]'),
-      mortgageBalance: getFieldValue('input[placeholder="Current mortgage balance?"]'),
-      monthlyPiti: getFieldValue('input[placeholder="Monthly payment to the bank? (PITI)"]'),
+      askingPrice: getFieldByLabel('Asking Price'),
+      arv: getFieldByLabel('After Repair Value (ARV)'),
+      repairs: getFieldByLabel('Repairs cost will be about....'),
+      mortgageBalance: getFieldByLabel('Current mortgage balance?'),
+      monthlyPiti: getFieldByLabel('Monthly payment to the bank? (PITI)'),
       termsAvailable: termsAvailable
     };
   }
