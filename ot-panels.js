@@ -15,7 +15,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   var SCRIPT_DOC_BASE_URL = 'https://docs.google.com/document/d/1AP1yqYxljROHvQLNYVTFnSdUrACG3bWCEcCsmiEShQQ/preview';
-  var CALCULATOR_URL = 'https://offertermz.com/calculator';
+  var CALCULATOR_URL = 'https://tools.offertermz.com/calculator';
 
   var SCRIPT_TABS = {
     'subject-to': 't.u6vs1q5zzo82',
