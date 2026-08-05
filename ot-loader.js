@@ -1,6 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Loader v5
+ * OfferTermz Loader v6
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * *** VERSION 6 ***
+ * UPDATES FROM V5:
+ * - Registers three new modules: ot-autotabs.js, ot-closer.js, ot-leadstrip.js
+ * - Header button change: "Submit Deal Token" replaced by "The Closer"
+ * - BOTH changes are SANDBOX-ONLY in this version. Production subaccounts
+ *   behave exactly like v5 — same modules, same four buttons. This lets the
+ *   full new pipeline be tested in the sandbox behind tag v1.2.8 before the
+ *   switch is flipped for everyone in a later tag.
+ * - TO ROLL OUT TO EVERYONE (next tag): set ENABLE_CLOSER_EVERYWHERE = true.
+ *
+ * NOTE: ot-submit.js still loads everywhere. Only its header button is
+ * replaced — the Deal Token machinery stays intact and restorable.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -12,6 +26,11 @@
   // ═══════════════════════════════════════════════════════════════════════
   
   var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5h';
+
+  // V6: The Closer rollout switch.
+  // false = new modules + The Closer button appear in the SANDBOX only.
+  // true  = everyone gets them (flip this in the rollout tag).
+  var ENABLE_CLOSER_EVERYWHERE = false;
   
   function getLoaderVersion() {
     var scripts = document.querySelectorAll('script[src*="offertermz-scripts"]');
@@ -30,6 +49,9 @@
   var currentLocationId = getCurrentLocationId();
   var IS_SANDBOX = (currentLocationId === SANDBOX_LOCATION_ID);
   var CURRENT_VERSION = getLoaderVersion();
+
+  // V6: one flag that answers "does this account get The Closer experience?"
+  var CLOSER_ENABLED = ENABLE_CLOSER_EVERYWHERE || IS_SANDBOX;
   
   var GITHUB_BASE_URL = IS_SANDBOX
     ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@dev/'
@@ -42,6 +64,14 @@
     'ot-submit.js',
     'ot-sam-help.js'
   ];
+
+  // V6: The Closer pipeline. Order matters: ot-autotabs.js must load
+  // before the two modules that depend on its READY signal.
+  if (CLOSER_ENABLED) {
+    MODULES.push('ot-autotabs.js');
+    MODULES.push('ot-closer.js');
+    MODULES.push('ot-leadstrip.js');
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // DEBUG MODE & LOGGING
@@ -178,9 +208,15 @@
     var buttons = [
       { id: 'ot-calculator-btn', text: 'Deal Analyzer', fn: 'otToggleCalculatorPanel' },
       { id: 'ot-script-btn', text: 'Show Script', fn: 'otToggleScriptPanel' },
-      { id: 'ot-comps-btn', text: 'Get Comps', fn: 'otToggleCompsPanel' },
-      { id: 'ot-token-btn', text: 'Submit Deal Token', fn: 'otSubmitDealToken' }
+      { id: 'ot-comps-btn', text: 'Get Comps', fn: 'otToggleCompsPanel' }
     ];
+
+    // V6: fourth button — The Closer where enabled, Deal Token elsewhere
+    if (CLOSER_ENABLED) {
+      buttons.push({ id: 'ot-closer-btn', text: 'The Closer', fn: 'otOpenTheCloser' });
+    } else {
+      buttons.push({ id: 'ot-token-btn', text: 'Submit Deal Token', fn: 'otSubmitDealToken' });
+    }
     
     buttons.forEach(function(b) {
       var btn = document.createElement('button');
@@ -287,7 +323,7 @@
   // START LOADING
   // ═══════════════════════════════════════════════════════════════════════
 
-  log('🚀 OfferTermz Loader v5 starting... (Sandbox: ' + IS_SANDBOX + ')');
+  log('🚀 OfferTermz Loader v6 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
   
   loadConfetti(function() {
     loadNextModule(0);
