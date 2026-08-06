@@ -3,13 +3,17 @@
  * OfferTermz Lead Strip Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * *** VERSION 1 ***
+ * *** VERSION 2 ***
+ * UPDATES FROM V1:
+ * - Position: now CENTERED horizontally on the page, below the header
+ *   buttons — the right-aligned spot was crowded against GHL's own
+ *   header icons. Vertical anchor unchanged (just under the buttons row).
  *
  * FILE: ot-leadstrip.js
- * PURPOSE: A small branded pill shown just below the OfferTermz header
- *          buttons on every lead record, displaying the LEAD's first name
- *          and street address — e.g.  "John, 4506 Jackson Dr" — so the
- *          caller never says the wrong name or address mid-dial.
+ * PURPOSE: A small branded pill shown below the OfferTermz header buttons
+ *          on every lead record, displaying the LEAD's first name and
+ *          street address — e.g.  "John, 4506 Jackson Dr" — so the caller
+ *          never says the wrong name or address mid-dial.
  * EDIT THIS WHEN: Changing what the strip shows, its look, or its position.
  *
  * DEPENDS ON: ot-autotabs.js (the Contact and Property tabs must be open
@@ -21,8 +25,7 @@
  *
  * NOTE THE TWO NAMES IN THIS SYSTEM:
  * - The strip shows the LEAD's first name (the seller — "John").
- * - The Closer button sends the CALLER's first name (the assigned user).
- *   Different people, different sources, on purpose.
+ * - The Closer button sends caller= (the assigned user) separately.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -86,6 +89,8 @@
     style.textContent =
       '#' + STRIP_ID + ' {' +
         'position: fixed;' +
+        'left: 50%;' +                   /* V2: centered on the page */
+        'transform: translateX(-50%);' +
         'z-index: 999;' +
         'display: none;' +               /* shown only when there is data */
         'align-items: center;' +
@@ -130,9 +135,9 @@
     return strip;
   }
 
-  // Anchor the strip directly below the OfferTermz header buttons,
-  // right-edge aligned with them. Re-measured every refresh, so window
-  // resizes and layout shifts self-correct.
+  // V2: horizontal centering is pure CSS; only the vertical anchor is
+  // measured — just below the OfferTermz header buttons row. Re-measured
+  // every refresh, so resizes and layout shifts self-correct.
   function positionStrip(strip) {
     var buttons = document.getElementById(BUTTONS_ID);
     if (!buttons) return false;
@@ -141,8 +146,6 @@
     if (rect.width === 0 && rect.height === 0) return false; // not laid out yet
 
     strip.style.top = (rect.bottom + 6) + 'px';
-    strip.style.right = (window.innerWidth - rect.right) + 'px';
-    strip.style.left = 'auto';
     return true;
   }
 
@@ -203,6 +206,6 @@
     refresh: refresh
   };
 
-  log('✅ ot-leadstrip.js v1 loaded');
+  log('✅ ot-leadstrip.js v2 loaded');
 
 })();
