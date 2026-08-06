@@ -1,7 +1,12 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Loader v6
+ * OfferTermz Loader v7
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * *** VERSION 7 ***
+ * UPDATES FROM V6:
+ * - Closer world drops the Show Script button (CCC page replaced static
+ *   scripts). Production button set still identical to v5.
  *
  * *** VERSION 6 ***
  * UPDATES FROM V5:
@@ -205,17 +210,24 @@
     var container = document.createElement('div');
     container.id = 'ot-header-buttons';
     
-    var buttons = [
-      { id: 'ot-calculator-btn', text: 'Deal Analyzer', fn: 'otToggleCalculatorPanel' },
-      { id: 'ot-script-btn', text: 'Show Script', fn: 'otToggleScriptPanel' },
-      { id: 'ot-comps-btn', text: 'Get Comps', fn: 'otToggleCompsPanel' }
-    ];
-
-    // V6: fourth button — The Closer where enabled, Deal Token elsewhere
+    // V7: two button worlds.
+    // Closer world: Show Script retired (the CCC page replaced static
+    // scripts) and The Closer takes the last slot. Production (until the
+    // rollout flag flips): the original four, unchanged.
+    var buttons;
     if (CLOSER_ENABLED) {
-      buttons.push({ id: 'ot-closer-btn', text: 'The Closer', fn: 'otOpenTheCloser' });
+      buttons = [
+        { id: 'ot-calculator-btn', text: 'Deal Analyzer', fn: 'otToggleCalculatorPanel' },
+        { id: 'ot-comps-btn', text: 'Get Comps', fn: 'otToggleCompsPanel' },
+        { id: 'ot-closer-btn', text: 'The Closer', fn: 'otOpenTheCloser' }
+      ];
     } else {
-      buttons.push({ id: 'ot-token-btn', text: 'Submit Deal Token', fn: 'otSubmitDealToken' });
+      buttons = [
+        { id: 'ot-calculator-btn', text: 'Deal Analyzer', fn: 'otToggleCalculatorPanel' },
+        { id: 'ot-script-btn', text: 'Show Script', fn: 'otToggleScriptPanel' },
+        { id: 'ot-comps-btn', text: 'Get Comps', fn: 'otToggleCompsPanel' },
+        { id: 'ot-token-btn', text: 'Submit Deal Token', fn: 'otSubmitDealToken' }
+      ];
     }
     
     buttons.forEach(function(b) {
@@ -323,7 +335,7 @@
   // START LOADING
   // ═══════════════════════════════════════════════════════════════════════
 
-  log('🚀 OfferTermz Loader v6 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
+  log('🚀 OfferTermz Loader v7 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
   
   loadConfetti(function() {
     loadNextModule(0);
