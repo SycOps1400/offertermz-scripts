@@ -1,6 +1,10 @@
- /**
+/**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Panels Module v4
+ * OfferTermz Panels Module v5
+ *
+ * V5: Deal Analyzer panel now slides in from the RIGHT (was left).
+ *     The right slot was freed by retiring the Show Script button —
+ *     the CCC page replaced static scripts.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -15,7 +19,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   var SCRIPT_DOC_BASE_URL = 'https://docs.google.com/document/d/1AP1yqYxljROHvQLNYVTFnSdUrACG3bWCEcCsmiEShQQ/preview';
-  var CALCULATOR_URL = 'https://tools.offertermz.com/calculator';
+  var CALCULATOR_URL = 'https://offertermz.com/calculator';
 
   var SCRIPT_TABS = {
     'subject-to': 't.u6vs1q5zzo82',
@@ -285,7 +289,7 @@ function checkSectionStatus() {
     if (document.getElementById('ot-calculator-panel')) return;
     var panel = document.createElement('div');
     panel.id = 'ot-calculator-panel';
-    panel.className = 'ot-panel ot-panel-left';
+    panel.className = 'ot-panel ot-panel-right';
     panel.innerHTML = 
       '<div class="ot-panel-header">' +
         '<span>Deal Analyzer</span>' +
@@ -680,6 +684,6 @@ function checkSectionStatus() {
     closeComps: removeCompsOverlay
   };
 
-  log('✅ ot-panels.js v4 loaded');
+  log('✅ ot-panels.js v5 loaded');
 
 })();
