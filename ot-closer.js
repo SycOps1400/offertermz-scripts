@@ -3,6 +3,14 @@
  * OfferTermz "The Closer" Button Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 4 ***
+ * UPDATES FROM V3:
+ * - Unassigned leads now correctly send caller=UNASSIGNED. GHL does not
+ *   render the owner name element at all when nobody is assigned (it shows
+ *   an "Unassigned" placeholder in a different structure), so V3 found
+ *   nothing and silently omitted the caller parameter. V4 treats "owner
+ *   area present but no name" as the unassigned state.
+ *
  * *** VERSION 3 ***
  * UPDATES FROM V2:
  * - CALLER now read from the Owner dropdown (#owner-dropdown-trigger), not
@@ -113,24 +121,27 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   function getCallerFirstName() {
-    var el = document.querySelector('#owner-dropdown-trigger .hr-ellipsis');
-    if (!el) {
-      log('The Closer: owner element not found — sending no caller');
+    var wrap = document.querySelector('#owner-dropdown-trigger');
+    if (!wrap) {
+      // Owner UI not on the page at all — can't know anything, send nothing
+      log('The Closer: owner area not found — sending no caller');
       return '';
     }
 
-    var fullName = (el.textContent || '').replace(/[<>]/g, '').trim();
-    if (!fullName) {
-      log('The Closer: owner element empty — sending no caller');
-      return '';
-    }
+    // Assigned leads render the name inside an ellipsis element; unassigned
+    // leads render no such element (V4). Fall back to the area's whole text.
+    var nameEl = wrap.querySelector('.hr-ellipsis');
+    var text = ((nameEl ? nameEl.textContent : wrap.textContent) || '')
+      .replace(/[<>]/g, '').trim();
 
-    // Deliberate nudge: unassigned leads open the tool as "UNASSIGNED"
-    if (fullName.toLowerCase() === 'unassigned') {
+    // Deliberate nudge: unassigned leads open the tool as "UNASSIGNED".
+    // Covers both the literal "Unassigned" placeholder and an empty area.
+    if (!text || text.toLowerCase().indexOf('unassigned') !== -1) {
+      log('The Closer: no owner assigned — sending caller=UNASSIGNED');
       return 'UNASSIGNED';
     }
 
-    var firstName = firstWord(fullName);
+    var firstName = firstWord(text);
     log('The Closer: caller resolved to "' + firstName + '"');
     return firstName;
   }
@@ -250,6 +261,6 @@
     syncButtonState: syncButtonState
   };
 
-  log('✅ ot-closer.js v3 loaded');
+  log('✅ ot-closer.js v4 loaded');
 
 })();
