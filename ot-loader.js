@@ -1,7 +1,15 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Loader v7
+ * OfferTermz Loader v8
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * *** VERSION 8 *** — THE LAUNCH VERSION
+ * UPDATES FROM V7:
+ * - ENABLE_CLOSER_EVERYWHERE flipped to true. Every subaccount now gets:
+ *   auto-opening tabs, the lead strip, and the three-button header —
+ *   Deal Analyzer (right side, 45%) · Get Comps · The Closer.
+ * - Show Script and Submit Deal Token buttons retired everywhere
+ *   (their modules stay loaded; restoration is a one-line change).
  *
  * *** VERSION 7 ***
  * UPDATES FROM V6:
@@ -35,7 +43,7 @@
   // V6: The Closer rollout switch.
   // false = new modules + The Closer button appear in the SANDBOX only.
   // true  = everyone gets them (flip this in the rollout tag).
-  var ENABLE_CLOSER_EVERYWHERE = false;
+  var ENABLE_CLOSER_EVERYWHERE = true;
   
   function getLoaderVersion() {
     var scripts = document.querySelectorAll('script[src*="offertermz-scripts"]');
@@ -335,7 +343,7 @@
   // START LOADING
   // ═══════════════════════════════════════════════════════════════════════
 
-  log('🚀 OfferTermz Loader v7 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
+  log('🚀 OfferTermz Loader v8 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
   
   loadConfetti(function() {
     loadNextModule(0);
