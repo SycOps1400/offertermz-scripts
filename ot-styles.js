@@ -4,6 +4,12 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 
 
+ * *** VERSION 3 ***
+ * UPDATES FROM V2:
+ * - .ot-panel-right widened to 45vw with the 600px max-width cap removed —
+ *   the Deal Analyzer panel (moved to the right in ot-panels v5) should
+ *   genuinely take ~45% of the screen, including wide monitors.
+ *
  * *** VERSION 2 ***
  * UPDATES:
  * - Added .ot-btn-loading style for buttons while modules load
@@ -108,9 +114,9 @@
     .ot-panel-right {
   top: 0;
   right: 0;
-  width: 42vw;
+  width: 45vw;          /* V3: Deal Analyzer lives here now — ~45% of screen */
   min-width: 450px;
-  max-width: 600px;
+  max-width: none;      /* V3: cap lifted so 45% is real on wide monitors */
   height: 100vh;
   transform: translateX(100%);
 }
