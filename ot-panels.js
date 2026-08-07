@@ -1,6 +1,9 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Panels Module v5
+ * OfferTermz Panels Module v6
+ *
+ * V6: Deal Analyzer calculator URL corrected to the tools domain —
+ *     tools.offertermz.com/calculator (was offertermz.com/calculator).
  *
  * V5: Deal Analyzer panel now slides in from the RIGHT (was left).
  *     The right slot was freed by retiring the Show Script button —
@@ -19,7 +22,7 @@
   // ═══════════════════════════════════════════════════════════════════════
 
   var SCRIPT_DOC_BASE_URL = 'https://docs.google.com/document/d/1AP1yqYxljROHvQLNYVTFnSdUrACG3bWCEcCsmiEShQQ/preview';
-  var CALCULATOR_URL = 'https://offertermz.com/calculator';
+  var CALCULATOR_URL = 'https://tools.offertermz.com/calculator';
 
   var SCRIPT_TABS = {
     'subject-to': 't.u6vs1q5zzo82',
@@ -684,6 +687,6 @@ function checkSectionStatus() {
     closeComps: removeCompsOverlay
   };
 
-  log('✅ ot-panels.js v5 loaded');
+  log('✅ ot-panels.js v6 loaded');
 
 })();
