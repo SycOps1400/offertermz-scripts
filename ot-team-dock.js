@@ -3,6 +3,35 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 5 ***
+ * UPDATES FROM V4:
+ * - Real Sam webhook wired in (SAM_WEBHOOK placeholder replaced).
+ *
+ * *** VERSION 4 *** — AI TEAM STATUS (the dock becomes a status board)
+ * UPDATES FROM V3:
+ * - Reads the "AI Team Status" dropdown (Contact folder) on every refresh.
+ *   GHL renders dropdowns as custom widgets: the value is TEXT in
+ *   .hr-base-selection-overlay__wrapper (the inner <input> is empty).
+ *   Reader anchors, in order: overlay text -> [title] attr -> field id
+ *   contact.ai_team_status. Unknown/empty value => everything off.
+ * - Sam & Mia rings become live status: on = green dot, standby = amber
+ *   dot + "Sam · standby" label, off = dimmed (still clickable).
+ * - Sam click opens a built-in toggle popup (no external page): shows
+ *   current state, one primary action (Turn Sam On/Off), POSTs
+ *   { contact, location_id, value } to SAM_WEBHOOK. When the current
+ *   value is a Mia state, a caution notes that changing Sam ends Mia's
+ *   involvement.
+ * - Optimistic override: after a confirmed 200 the dock trusts the new
+ *   value for 90s (or until GHL re-renders), so the ring flips instantly.
+ * - SAM_WEBHOOK ships as a placeholder; the popup refuses politely until
+ *   the real URL is set (lesson learned from REPLACE_WITH_MIA_WEBHOOK).
+ *
+ * *** VERSION 3 ***
+ * UPDATES FROM V2:
+ * - Popup enlarged again: min(650px, 96vw) x min(900px, 92vh) so the
+ *   scrollbar disappears on standard monitors (small screens still
+ *   scroll gracefully - accepted trade-off).
+ *
  * *** VERSION 2 ***
  * UPDATES FROM V1 (all caught in first sandbox test):
  * - FIX: portrait circles rendered giant — .ot-dock-circle spans were
@@ -71,6 +100,22 @@
   var REFRESH_EVERY_MS = 500;
 
   var MIA_URL = 'https://www.offertermz.com/mia';
+
+  // V4: Sam toggle backend — a small Make scenario (webhook -> Airtable
+  // token lookup by location_id -> GHL PUT of the AI Team Status field).
+  // MUST be replaced with the real webhook URL before Sam's toggle works.
+  var SAM_WEBHOOK = 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27';
+
+  // V4: the exact customer-facing dropdown values (D17 — character-for-
+  // character; the reader whitelists these and treats anything else as
+  // empty = everything off).
+  var STATUS = {
+    SAM_ON: 'Sam On',
+    SAM_OFF: 'Sam Off',
+    MIA_SAM_STANDBY: 'Mia Following Up & Sam On Standby',
+    MIA_SAM_OFF: 'Mia Following Up & Sam Off'
+  };
+  var STATUS_FIELD_LABEL = 'AI Team Status';
 
   var IMG = {
     sam:  'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771a32ae01952f74ab5f2.webp',
@@ -162,6 +207,61 @@
     if (!text) return '';
     var match = text.match(/\(([^)]+)\)/);
     return match ? match[1].trim() : text;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // AI TEAM STATUS READER (V4)
+  // GHL dropdowns are custom widgets: the selected value is TEXT in
+  // .hr-base-selection-overlay__wrapper; the inner <input> is empty.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Optimistic override after a confirmed toggle (GHL may not re-render
+  // the field immediately after an API write).
+  var statusOverride = { contactId: '', value: '', ts: 0 };
+  var OVERRIDE_TTL_MS = 90000;
+
+  function getAITeamStatusRaw() {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === STATUS_FIELD_LABEL) {
+        var container = labels[i].closest('.hr-form-item__container');
+        if (container) {
+          var overlay = container.querySelector('.hr-base-selection-overlay__wrapper');
+          if (overlay) {
+            var t = (overlay.textContent || '').trim();
+            if (t) return t;
+          }
+          var titled = container.querySelector('.hr-base-selection-label[title]');
+          if (titled) {
+            var t2 = (titled.getAttribute('title') || '').trim();
+            if (t2) return t2;
+          }
+        }
+      }
+    }
+    // Last-resort anchor: the field's own id (observed in the live DOM)
+    var byId = document.getElementById('contact.ai_team_status');
+    if (byId) {
+      var o = byId.querySelector('.hr-base-selection-overlay__wrapper');
+      if (o) {
+        var t3 = (o.textContent || '').trim();
+        if (t3) return t3;
+      }
+    }
+    return '';
+  }
+
+  function getAITeamStatus() {
+    var cid = getContactId();
+    if (statusOverride.contactId === cid &&
+        (Date.now() - statusOverride.ts) < OVERRIDE_TTL_MS) {
+      return statusOverride.value;
+    }
+    var raw = getAITeamStatusRaw();
+    for (var key in STATUS) {
+      if (STATUS[key] === raw) return raw;
+    }
+    return ''; // unknown / empty / pre-migration => everything off (D18)
   }
 
   // Lead phone, normalized toward +1XXXXXXXXXX (US). Falls back to the
@@ -373,7 +473,7 @@
       '#' + POPUP_ID + ' {' +
         'position: fixed; z-index: 99999;' +
         'top: 50%; left: 50%;' +
-        'width: min(560px, 94vw); height: min(800px, 90vh);' + /* v2: enlarged */
+        'width: min(650px, 96vw); height: min(900px, 92vh);' + /* v3: sized so the scrollbar disappears on standard monitors; small screens scroll gracefully */
         'background: #1E3A5F;' +
         'border-radius: 18px;' +
         'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
@@ -421,6 +521,77 @@
       '}' +
       '#' + POPUP_ID + ' iframe {' +
         'border: none; width: 100%; flex: 1 1 auto; background: #0e1a2b;' +
+      '}' +
+
+      /* ── V4: live status states (traffic-light) ── */
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-standby .ot-dock-online {' +
+        'background: #f59e0b;' +
+      '}' +
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-idle .ot-dock-online {' +
+        'display: none;' +
+      '}' +
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-idle .ot-dock-circle {' +
+        'border-color: #8896a5;' +
+        'background: #3d4a5c;' +
+      '}' +
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-idle .ot-dock-circle img {' +
+        'filter: grayscale(1); opacity: 0.55;' +
+      '}' +
+
+      /* ── V4: Sam toggle popup ── */
+      '#ot-sam-overlay {' +
+        'position: fixed; inset: 0; z-index: 99998;' +
+        'background: rgba(14,26,43,0.72);' +
+      '}' +
+      '#ot-sam-popup {' +
+        'position: fixed; z-index: 99999; top: 50%; left: 50%;' +
+        'transform: translate(-50%, -50%);' +
+        'width: min(360px, 92vw);' +
+        'background: #1E3A5F; border-radius: 16px;' +
+        'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
+        'padding: 20px;' +
+        'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-head {' +
+        'display: flex; align-items: center; gap: 12px; margin-bottom: 12px;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-avatar {' +
+        'width: 52px; height: 52px; border-radius: 50%;' +
+        'border: 2.5px solid #E85A33; background: #2a5080;' +
+        'overflow: hidden; box-sizing: border-box; flex: 0 0 auto;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-avatar img {' +
+        'width: 100%; height: 100%; display: block; object-fit: cover;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-title {' +
+        'color: #ffffff; font-size: 16px; font-weight: 700; line-height: 1.2;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-sub {' +
+        'color: #c8d0da; font-size: 12px; font-weight: 500;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-status {' +
+        'color: #ffffff; font-size: 14px; line-height: 1.5; margin-bottom: 8px;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-note {' +
+        'color: #c8d0da; font-size: 12px; line-height: 1.5; margin-bottom: 8px;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-warn {' +
+        'color: #f9b47a; font-size: 12px; line-height: 1.5; margin-bottom: 8px;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-btn {' +
+        'display: block; width: 100%; border: none; cursor: pointer;' +
+        'background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%);' +
+        'color: #ffffff; font-size: 15px; font-weight: 700;' +
+        'padding: 12px; border-radius: 10px; margin-top: 10px;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-btn:disabled {' +
+        'opacity: 0.6; cursor: default;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-close {' +
+        'position: absolute; top: 12px; right: 14px;' +
+        'border: none; background: rgba(255,255,255,0.12);' +
+        'color: #ffffff; font-size: 16px; line-height: 1;' +
+        'width: 28px; height: 28px; border-radius: 50%; cursor: pointer;' +
       '}';
     document.head.appendChild(style);
   }
@@ -512,8 +683,9 @@
     // ── Team ──
     dock.appendChild(buildItem({
       id: 'ot-dock-sam', label: 'Sam', kind: 'member', img: IMG.sam,
-      online: true, passive: true,
-      title: 'Sam · Acquisitionist — already working your leads'
+      online: true,
+      title: 'Sam · Acquisitionist — click to see or change his status',
+      onClick: onSamClick
     }));
 
     dock.appendChild(buildItem({
@@ -645,6 +817,11 @@
       else item.classList.add('ot-dock-waiting');
     });
 
+    // V4: live status rings for Sam & Mia (readable once tabs are open)
+    if (tabsReady()) {
+      applyStatusRings();
+    }
+
     var waitModuleItems = [
       document.getElementById('ot-dock-analyzer'),
       document.getElementById('ot-dock-comps')
@@ -664,6 +841,148 @@
 
   setInterval(refresh, REFRESH_EVERY_MS);
   document.addEventListener('ot-tabs-ready', refresh);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STATUS RINGS (V4) — the dock as a live status board.
+  // Truth table (D17):
+  //   Sam On                              -> Sam green,  Mia dim
+  //   Sam Off                             -> Sam dim,    Mia dim
+  //   Mia Following Up & Sam On Standby   -> Sam amber,  Mia green
+  //   Mia Following Up & Sam Off          -> Sam dim,    Mia green
+  //   (empty / unknown)                   -> all dim (D18)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function setMemberState(id, state) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('ot-state-on', 'ot-state-standby', 'ot-state-idle');
+    el.classList.add('ot-state-' + state);
+  }
+
+  function applyStatusRings() {
+    var status = getAITeamStatus();
+
+    var samState = (status === STATUS.SAM_ON) ? 'on'
+      : (status === STATUS.MIA_SAM_STANDBY) ? 'standby'
+      : 'idle';
+    var miaState = (status === STATUS.MIA_SAM_STANDBY ||
+                    status === STATUS.MIA_SAM_OFF) ? 'on' : 'idle';
+
+    setMemberState('ot-dock-sam', samState);
+    setMemberState('ot-dock-mia', miaState);
+
+    var samLabel = document.querySelector('#ot-dock-sam .ot-dock-label');
+    if (samLabel) {
+      var want = (samState === 'standby') ? 'Sam · standby' : 'Sam';
+      if (samLabel.textContent !== want) samLabel.textContent = want;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SAM TOGGLE POPUP (V4) — built-in, no external page.
+  // Writes { contact, location_id, value } to SAM_WEBHOOK; the Make
+  // scenario PUTs the AI Team Status field; the GHL workflow on that
+  // field change flips the Conversation AI + writes the dated note.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function onSamClick() {
+    if (!isOnContactPage()) {
+      alert('Please open a contact record first to manage Sam.');
+      return;
+    }
+    if (!tabsReady()) {
+      alert('One second — still loading this lead\'s details. Try again in a moment.');
+      return;
+    }
+    openSamPopup();
+  }
+
+  function openSamPopup() {
+    if (document.getElementById('ot-sam-overlay')) return;
+
+    var status = getAITeamStatus();
+    var samOn = (status === STATUS.SAM_ON);
+    var standby = (status === STATUS.MIA_SAM_STANDBY);
+    var inMia = (status === STATUS.MIA_SAM_STANDBY || status === STATUS.MIA_SAM_OFF);
+
+    var statusLine = samOn
+      ? 'Sam is ON — actively working this lead.'
+      : standby
+        ? 'Sam is on STANDBY — he takes over the moment the lead responds.'
+        : 'Sam is OFF for this lead.';
+
+    var overlay = document.createElement('div');
+    overlay.id = 'ot-sam-overlay';
+    overlay.addEventListener('click', closeSamPopup);
+    document.body.appendChild(overlay);
+
+    var card = document.createElement('div');
+    card.id = 'ot-sam-popup';
+    card.innerHTML =
+      '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
+      '<div class="ot-sam-head">' +
+        '<span class="ot-sam-avatar"><img src="' + IMG.sam + '" alt="Sam"></span>' +
+        '<span>' +
+          '<div class="ot-sam-title">Sam</div>' +
+          '<div class="ot-sam-sub">Acquisitionist</div>' +
+        '</span>' +
+      '</div>' +
+      '<div class="ot-sam-status">' + statusLine + '</div>' +
+      (inMia ? '<div class="ot-sam-note">Mia is currently following up with this lead.</div>' : '') +
+      (inMia ? '<div class="ot-sam-warn">Changing Sam here will end Mia\'s involvement on this lead.</div>' : '') +
+      '<button type="button" class="ot-sam-btn" id="ot-sam-toggle-btn">' +
+        (samOn ? 'Turn Sam Off' : 'Turn Sam On') +
+      '</button>';
+
+    card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
+    card.querySelector('#ot-sam-toggle-btn').addEventListener('click', function() {
+      setSamStatus(samOn ? STATUS.SAM_OFF : STATUS.SAM_ON, this);
+    });
+    document.body.appendChild(card);
+    document.addEventListener('keydown', samEscHandler);
+  }
+
+  function samEscHandler(e) {
+    if (e.key === 'Escape') closeSamPopup();
+  }
+
+  function closeSamPopup() {
+    document.removeEventListener('keydown', samEscHandler);
+    var overlay = document.getElementById('ot-sam-overlay');
+    var card = document.getElementById('ot-sam-popup');
+    if (card && card.parentNode) card.parentNode.removeChild(card);
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function setSamStatus(value, btn) {
+    if (SAM_WEBHOOK.indexOf('REPLACE') === 0) {
+      alert('Sam\'s toggle backend isn\'t connected yet (webhook placeholder). No changes were made.');
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Working\u2026'; }
+
+    fetch(SAM_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contact: getContactId(),
+        location_id: getLocationId(),
+        value: value
+      })
+    }).then(function(res) {
+      if (res.ok) {
+        statusOverride = { contactId: getContactId(), value: value, ts: Date.now() };
+        applyStatusRings();
+        closeSamPopup();
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    }).catch(function(err) {
+      log('Sam toggle failed: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = (value === STATUS.SAM_ON) ? 'Turn Sam On' : 'Turn Sam Off'; }
+      alert('Couldn\'t update Sam right now. Nothing was changed \u2014 please try again.');
+    });
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // MIA POPUP — dim the CRM, enlarge Mia's circle into a centered frame
@@ -761,6 +1080,10 @@
 
   window.OT_TeamDock = {
     refresh: refresh,
+    getAITeamStatus: getAITeamStatus,
+    applyStatusRings: applyStatusRings,
+    openSamPopup: openSamPopup,
+    closeSamPopup: closeSamPopup,
     buildMiaURL: buildMiaURL,
     getCompanyName: getCompanyName,
     getLeadPhone: getLeadPhone,

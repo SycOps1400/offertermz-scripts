@@ -40,6 +40,19 @@ function makeContactDOM(opts) {
       '</div>';
   }
 
+  // V4: AI Team Status dropdown — GHL renders the value as TEXT in the
+  // overlay wrapper; the input is empty (mirrors the live DOM snippet).
+  const statusHTML = (opts.aiStatus === undefined) ? '' :
+    '<div class="hr-form-item__container">' +
+      '<label><span class="hr-form-item-label__text">AI Team Status</span></label>' +
+      '<div class="hr-select" id="contact.ai_team_status">' +
+        '<div class="hr-base-selection-label" title="' + opts.aiStatus + '">' +
+          '<input class="hr-base-selection-input" value="">' +
+          '<div class="hr-base-selection-overlay__wrapper">' + opts.aiStatus + '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
   const ownerHTML = opts.noOwnerArea ? '' :
     '<div id="owner-dropdown-trigger">' +
       (opts.unassigned ? 'Unassigned' :
@@ -54,7 +67,7 @@ function makeContactDOM(opts) {
   const dom = new JSDOM(
     '<html><head></head><body>' +
       '<div class="hl_header--controls"></div>' +
-      sidebarHTML + ownerHTML + fieldHTML +
+      sidebarHTML + ownerHTML + fieldHTML + statusHTML +
     '</body></html>',
     { url: url, runScripts: 'outside-only', pretendToBeVisual: true }
   );
@@ -204,7 +217,7 @@ section('Dock element & refresh behavior');
   check('Mia circle present', !!dom.window.document.getElementById('ot-dock-mia'));
   check('Ruby is training', dom.window.document.getElementById('ot-dock-ruby').className.includes('ot-dock-training'));
   check('Tate is training', dom.window.document.getElementById('ot-dock-tate').className.includes('ot-dock-training'));
-  check('Sam is passive (no action)', dom.window.document.getElementById('ot-dock-sam').className.includes('ot-dock-passive'));
+  check('Sam is clickable in v4 (passive retired)', !dom.window.document.getElementById('ot-dock-sam').className.includes('ot-dock-passive'));
   check('Analyzer tool present', !!dom.window.document.getElementById('ot-dock-analyzer'));
   check('Comps tool present', !!dom.window.document.getElementById('ot-dock-comps'));
   check('Closer tool present', !!dom.window.document.getElementById('ot-dock-closer'));
@@ -266,6 +279,112 @@ section('Mia popup');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+section('AI Team Status reader (V4)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const vals = [
+    'Sam On',
+    'Sam Off',
+    'Mia Following Up & Sam On Standby',
+    'Mia Following Up & Sam Off'
+  ];
+  for (const v of vals) {
+    const dom = makeContactDOM({ aiStatus: v });
+    const dock = loadDock(dom);
+    check('reads "' + v + '" exactly', dock.getAITeamStatus() === v);
+  }
+  {
+    const dom = makeContactDOM({ aiStatus: 'Some Garbage Value' });
+    check('unknown value => empty (all off)', loadDock(dom).getAITeamStatus() === '');
+  }
+  {
+    const dom = makeContactDOM({ aiStatus: '' });
+    check('empty dropdown => empty', loadDock(dom).getAITeamStatus() === '');
+  }
+  {
+    const dom = makeContactDOM(); // field absent entirely (pre-migration)
+    check('field absent => empty', loadDock(dom).getAITeamStatus() === '');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('Status truth table → rings (V4)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const table = [
+    ['Sam On',                              'on',      'idle', 'Sam'],
+    ['Sam Off',                             'idle',    'idle', 'Sam'],
+    ['Mia Following Up & Sam On Standby',   'standby', 'on',   'Sam · standby'],
+    ['Mia Following Up & Sam Off',          'idle',    'on',   'Sam'],
+    [undefined,                             'idle',    'idle', 'Sam'], // absent field
+  ];
+  for (const [status, samState, miaState, samLabel] of table) {
+    const dom = makeContactDOM(status === undefined ? {} : { aiStatus: status });
+    const dock = loadDock(dom);
+    dock.refresh();
+    const sam = dom.window.document.getElementById('ot-dock-sam');
+    const mia = dom.window.document.getElementById('ot-dock-mia');
+    const label = sam.querySelector('.ot-dock-label').textContent;
+    const name = status === undefined ? '(absent)' : '"' + status + '"';
+    check(name + ' → Sam ' + samState, sam.className.includes('ot-state-' + samState));
+    check(name + ' → Mia ' + miaState, mia.className.includes('ot-state-' + miaState));
+    check(name + ' → label "' + samLabel + '"', label === samLabel);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('Sam toggle popup (V4)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatus: 'Sam On' });
+  const alerts = [];
+  dom.window.alert = (m) => alerts.push(m);
+  const dock = loadDock(dom);
+  dock.refresh();
+  dock.openSamPopup();
+  const popup = dom.window.document.getElementById('ot-sam-popup');
+  check('popup created', !!popup);
+  check('shows ON status line', popup.textContent.includes('Sam is ON'));
+  const btn = popup.querySelector('#ot-sam-toggle-btn');
+  check('primary action is Turn Sam Off', btn && btn.textContent === 'Turn Sam Off');
+  dock.closeSamPopup();
+  check('popup closes clean', !dom.window.document.getElementById('ot-sam-popup'));
+
+  // Standby state shows Mia caution
+  const dom2 = makeContactDOM({ aiStatus: 'Mia Following Up & Sam On Standby' });
+  const dock2 = loadDock(dom2);
+  dock2.refresh();
+  dock2.openSamPopup();
+  const popup2 = dom2.window.document.getElementById('ot-sam-popup');
+  check('standby popup: STANDBY line', popup2.textContent.includes('STANDBY'));
+  check('standby popup: Mia caution shown', popup2.textContent.includes("end Mia"));
+  check('standby popup: action is Turn Sam On', popup2.querySelector('#ot-sam-toggle-btn').textContent === 'Turn Sam On');
+  dock2.closeSamPopup();
+
+  // Full write path with a mocked backend (v5)
+  const dom3 = makeContactDOM({ aiStatus: 'Sam On' });
+  let fetched = null;
+  dom3.window.fetch = (url, opts) => { fetched = { url, opts }; return Promise.resolve({ ok: true }); };
+  const dock3 = loadDock(dom3);
+  dock3.refresh();
+  dock3.openSamPopup();
+  const btn3 = dom3.window.document.getElementById('ot-sam-toggle-btn');
+  btn3.dispatchEvent(new dom3.window.Event('click'));
+  check('POSTs to the real Sam webhook',
+    fetched && fetched.url === 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27');
+  const body3 = fetched ? JSON.parse(fetched.opts.body) : {};
+  check('payload carries contact + location_id + value=Sam Off',
+    body3.contact === 'dSoiEJ4n26EzpxLBKkmC' &&
+    body3.location_id === 'gE9qbjW9QSgOwI1Api5h' &&
+    body3.value === 'Sam Off');
+  setTimeout(() => {
+    check('optimistic override: reader now says Sam Off', dock3.getAITeamStatus() === 'Sam Off');
+    check('rings updated: Sam idle after the toggle', dom3.window.document.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
+    check('popup closed after confirmed 200', !dom3.window.document.getElementById('ot-sam-popup'));
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 section('Loader v9 — flag & module wiring (static analysis)');
 // ═══════════════════════════════════════════════════════════════════════
 {
@@ -306,7 +425,7 @@ section('Loader v9 — runtime: sandbox vs production module lists');
   const prod = runLoader('https://app.gohighlevel.com/v2/location/SomeOtherLocation123/contacts/detail/abc');
 
   // Let the async load chain drain (each hop is its own macrotask)
-  return new Promise(resolve => setTimeout(resolve, 800)).then(() => {
+  return new Promise(resolve => setTimeout(resolve, 2500)).then(() => {
     const sList = sandbox.loaded.join(' ');
     const pList = prod.loaded.join(' ');
     check('SANDBOX loads ot-team-dock.js', sList.includes('ot-team-dock.js'));
