@@ -344,22 +344,56 @@ section('Sam toggle popup (V4)');
   dock.openSamPopup();
   const popup = dom.window.document.getElementById('ot-sam-popup');
   check('popup created', !!popup);
-  check('shows ON status line', popup.textContent.includes('Sam is ON'));
-  const btn = popup.querySelector('#ot-sam-toggle-btn');
-  check('primary action is Turn Sam Off', btn && btn.textContent === 'Turn Sam Off');
+  check('ON view: "on the clock" voice', popup.textContent.includes('on the clock'));
+  check('ON view: texting, never talking', popup.textContent.includes('texting with Sarah') && !popup.textContent.includes('talk'));
+  const btn = popup.querySelector('[data-act="off"]');
+  check('ON view: single action = Turn Sam Off', btn && btn.textContent === 'Turn Sam Off');
   dock.closeSamPopup();
   check('popup closes clean', !dom.window.document.getElementById('ot-sam-popup'));
 
-  // Standby state shows Mia caution
+  // OFF view voice
+  const domOff = makeContactDOM({ aiStatus: 'Sam Off' });
+  const dockOff = loadDock(domOff);
+  dockOff.refresh();
+  dockOff.openSamPopup();
+  const popupOff = domOff.window.document.getElementById('ot-sam-popup');
+  check('OFF view: "off the clock" + in-charge framing', popupOff.textContent.includes('off the clock') && popupOff.textContent.includes('person in charge'));
+  check('OFF view: single action = Turn Sam On', popupOff.querySelector('[data-act="on"]').textContent === 'Turn Sam On');
+  dockOff.closeSamPopup();
+
+  // Standby: the two-step
   const dom2 = makeContactDOM({ aiStatus: 'Mia Following Up & Sam On Standby' });
   const dock2 = loadDock(dom2);
   dock2.refresh();
   dock2.openSamPopup();
   const popup2 = dom2.window.document.getElementById('ot-sam-popup');
-  check('standby popup: STANDBY line', popup2.textContent.includes('STANDBY'));
-  check('standby popup: Mia caution shown', popup2.textContent.includes("end Mia"));
-  check('standby popup: action is Turn Sam On', popup2.querySelector('#ot-sam-toggle-btn').textContent === 'Turn Sam On');
-  dock2.closeSamPopup();
+  check('standby view: breakroom line with lead name', popup2.textContent.includes('breakroom') && popup2.textContent.includes('Sarah'));
+  check('standby view: two buttons (On + Off)', !!popup2.querySelector('[data-act="standby-on"]') && !!popup2.querySelector('[data-act="standby-off"]'));
+
+  // Turn Sam On during standby = playful no-op, no network call
+  let anyFetch = false;
+  dom2.window.fetch = () => { anyFetch = true; return Promise.resolve({ ok: true }); };
+  popup2.querySelector('[data-act="standby-on"]').dispatchEvent(new dom2.window.Event('click'));
+  check('standby-on: "kinda IS on" view', popup2.textContent.includes('kinda IS on'));
+  check('standby-on: no webhook fired (no-op)', anyFetch === false);
+  popup2.querySelector('[data-act="close"]').dispatchEvent(new dom2.window.Event('click'));
+  check('"Fair enough" closes the popup', !dom2.window.document.getElementById('ot-sam-popup'));
+
+  // Turn Sam Off during standby = confirmation, then guarded write
+  let fetched2 = null;
+  dom2.window.fetch = (url, opts) => { fetched2 = { url, opts }; return Promise.resolve({ ok: true }); };
+  dock2.openSamPopup();
+  const p2 = dom2.window.document.getElementById('ot-sam-popup');
+  p2.querySelector('[data-act="standby-off"]').dispatchEvent(new dom2.window.Event('click'));
+  check('standby-off: the Mia question shown', p2.textContent.includes('who takes care of the lead'));
+  check('standby-off: fired nothing yet', fetched2 === null);
+  check('standby-off: Keep Sam on Standby offered', p2.querySelector('[data-act="close"]').textContent.includes('Keep Sam on Standby'));
+  p2.querySelector('[data-act="off-notify"]').dispatchEvent(new dom2.window.Event('click'));
+  setTimeout(() => {
+    const body2 = fetched2 ? JSON.parse(fetched2.opts.body) : {};
+    check('off-notify writes "Mia Following Up & Sam Off"', body2.value === 'Mia Following Up & Sam Off');
+    check('off-notify audit: action "Standby to Off"', body2.action === 'Standby to Off');
+  }, 100);
 
   // Full write path with a mocked backend (v5)
   const dom3 = makeContactDOM({ aiStatus: 'Sam On' });
@@ -368,16 +402,43 @@ section('Sam toggle popup (V4)');
   const dock3 = loadDock(dom3);
   dock3.refresh();
   dock3.openSamPopup();
-  const btn3 = dom3.window.document.getElementById('ot-sam-toggle-btn');
+  // Simulate the official AppUtils API being present
+  dom3.window.AppUtils = { Utilities: { getCurrentUser: () => Promise.resolve({
+    id: 'K2pBHHFpQAVTNIzn42jc', name: 'Ahmed Afifi', firstName: 'Ahmed',
+    lastName: 'Afifi', email: 'ahmed@automationz.ai', type: 'agency', role: 'admin'
+  }) } };
+  const btn3 = dom3.window.document.querySelector('#ot-sam-popup [data-act="off"]');
   btn3.dispatchEvent(new dom3.window.Event('click'));
-  check('POSTs to the real Sam webhook',
-    fetched && fetched.url === 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27');
-  const body3 = fetched ? JSON.parse(fetched.opts.body) : {};
-  check('payload carries contact + location_id + value=Sam Off',
-    body3.contact === 'dSoiEJ4n26EzpxLBKkmC' &&
-    body3.location_id === 'gE9qbjW9QSgOwI1Api5h' &&
-    body3.value === 'Sam Off');
+  // Unassigned lead → assigned_user: "UNASSIGNED" in the audit payload
+  const dom4 = makeContactDOM({ aiStatus: 'Sam Off', unassigned: true });
+  let fetched4 = null;
+  dom4.window.fetch = (url, opts) => { fetched4 = { url, opts }; return Promise.resolve({ ok: true }); };
+  const dock4 = loadDock(dom4);
+  dock4.refresh();
+  dock4.openSamPopup();
+  // dom4 has no AppUtils — the fallback path must engage
+  dom4.window.document.querySelector('#ot-sam-popup [data-act="on"]').dispatchEvent(new dom4.window.Event('click'));
+
   setTimeout(() => {
+    check('POSTs to the real Sam webhook',
+      fetched && fetched.url === 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27');
+    const body3 = fetched ? JSON.parse(fetched.opts.body) : {};
+    check('payload speaks the Mia dialect: contactId + "Location ID" + value',
+      body3['contactId'] === 'dSoiEJ4n26EzpxLBKkmC' &&
+      body3['Location ID'] === 'gE9qbjW9QSgOwI1Api5h' &&
+      body3.value === 'Sam Off');
+    check('audit: assigned_user carried', body3.assigned_user === 'Ahmed');
+    check('audit: ISO timestamp', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body3.timestamp));
+    check('audit: action "On to Off"', body3.action === 'On to Off');
+    check('v9: logged_in_user name via AppUtils', body3.logged_in_user === 'Ahmed Afifi');
+    check('v9: logged_in_user_id via AppUtils', body3.logged_in_user_id === 'K2pBHHFpQAVTNIzn42jc');
+    check('v9: logged_in_user_email via AppUtils', body3.logged_in_user_email === 'ahmed@automationz.ai');
+
+    const body4 = fetched4 ? JSON.parse(fetched4.opts.body) : {};
+    check('unassigned lead → assigned_user UNASSIGNED', body4.assigned_user === 'UNASSIGNED');
+    check('unassigned lead → action "Off to On"', body4.action === 'Off to On');
+    check('v9: no AppUtils → logged_in_user UNKNOWN (toggle survives)', body4.logged_in_user === 'UNKNOWN');
+
     check('optimistic override: reader now says Sam Off', dock3.getAITeamStatus() === 'Sam Off');
     check('rings updated: Sam idle after the toggle', dom3.window.document.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
     check('popup closed after confirmed 200', !dom3.window.document.getElementById('ot-sam-popup'));

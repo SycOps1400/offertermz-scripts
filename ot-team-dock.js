@@ -3,6 +3,43 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 9 *** — THE PERSON AT THE KEYBOARD
+ * UPDATES FROM V8:
+ * - logged_in_user / logged_in_user_id / logged_in_user_email added to the
+ *   Sam payload via GHL's OFFICIAL AppUtils.Utilities.getCurrentUser()
+ *   (documented Custom JS wrapper; verified live in our whitelabel
+ *   custom-code context). Distinct from assigned_user: "assigned to Ahmed,
+ *   toggled by Amanda." Falls back to UNKNOWN if AppUtils is ever absent —
+ *   the toggle never breaks over an audit column.
+ *
+ * *** VERSION 8 *** — AUDIT-READY PAYLOAD
+ * UPDATES FROM V7 (feeds the new Airtable toggle log — P8 born early):
+ * - assigned_user: owner's first name; "UNASSIGNED" when absent.
+ * - timestamp: ISO 8601, Make-parseable.
+ * - action: the transition, e.g. "Off to On", "Standby to Off" —
+ *   where the status was and where the user took it.
+ *
+ * *** VERSION 7 ***
+ * UPDATES FROM V6:
+ * - Sam webhook payload keys renamed to match the Mia page convention the
+ *   Make blueprints expect: "contactId" + "Location ID" (space, caps) +
+ *   "value". One payload dialect across all pages and scenarios.
+ *
+ * *** VERSION 6 *** — SAM'S POPUP GETS ITS VOICE (standby two-step)
+ * UPDATES FROM V5:
+ * - Three-state popup copy in the product voice, lead's first name woven in.
+ * - STANDBY is a two-button state with guarded paths:
+ *   "Turn Sam On"  -> playful no-op ("he kinda IS on") — correct behavior,
+ *                     since Sam only ever responds to inbound texts; going
+ *                     fully On during standby would only end Mia's nurturing
+ *                     with zero benefit.
+ *   "Turn Sam Off" -> confirmation view ("who takes care of the lead?") with
+ *                     Keep Sam on Standby (no change) or Turn Sam Off & notify
+ *                     me — which writes "Mia Following Up & Sam Off"; the GHL
+ *                     field-change workflow rewrites Mia's conclusion to
+ *                     notify-me so Sam can never be ghost-tagged back in.
+ * - On write failure the popup returns to the main view; nothing changes.
+ *
  * *** VERSION 5 ***
  * UPDATES FROM V4:
  * - Real Sam webhook wired in (SAM_WEBHOOK placeholder replaced).
@@ -584,6 +621,10 @@
         'color: #ffffff; font-size: 15px; font-weight: 700;' +
         'padding: 12px; border-radius: 10px; margin-top: 10px;' +
       '}' +
+      '#ot-sam-popup .ot-sam-btn--secondary {' +
+        'background: rgba(255,255,255,0.10);' +
+        'font-weight: 600;' +
+      '}' +
       '#ot-sam-popup .ot-sam-btn:disabled {' +
         'opacity: 0.6; cursor: default;' +
       '}' +
@@ -897,19 +938,24 @@
     openSamPopup();
   }
 
+  function samLeadName() {
+    var n = firstWord(getFieldByLabel('First Name'));
+    return n || 'the lead';
+  }
+
+  function samHeaderHTML() {
+    return '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
+      '<div class="ot-sam-head">' +
+        '<span class="ot-sam-avatar"><img src="' + IMG.sam + '" alt="Sam"></span>' +
+        '<span>' +
+          '<div class="ot-sam-title">Sam</div>' +
+          '<div class="ot-sam-sub">Acquisitionist</div>' +
+        '</span>' +
+      '</div>';
+  }
+
   function openSamPopup() {
     if (document.getElementById('ot-sam-overlay')) return;
-
-    var status = getAITeamStatus();
-    var samOn = (status === STATUS.SAM_ON);
-    var standby = (status === STATUS.MIA_SAM_STANDBY);
-    var inMia = (status === STATUS.MIA_SAM_STANDBY || status === STATUS.MIA_SAM_OFF);
-
-    var statusLine = samOn
-      ? 'Sam is ON — actively working this lead.'
-      : standby
-        ? 'Sam is on STANDBY — he takes over the moment the lead responds.'
-        : 'Sam is OFF for this lead.';
 
     var overlay = document.createElement('div');
     overlay.id = 'ot-sam-overlay';
@@ -918,28 +964,68 @@
 
     var card = document.createElement('div');
     card.id = 'ot-sam-popup';
-    card.innerHTML =
-      '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
-      '<div class="ot-sam-head">' +
-        '<span class="ot-sam-avatar"><img src="' + IMG.sam + '" alt="Sam"></span>' +
-        '<span>' +
-          '<div class="ot-sam-title">Sam</div>' +
-          '<div class="ot-sam-sub">Acquisitionist</div>' +
-        '</span>' +
-      '</div>' +
-      '<div class="ot-sam-status">' + statusLine + '</div>' +
-      (inMia ? '<div class="ot-sam-note">Mia is currently following up with this lead.</div>' : '') +
-      (inMia ? '<div class="ot-sam-warn">Changing Sam here will end Mia\'s involvement on this lead.</div>' : '') +
-      '<button type="button" class="ot-sam-btn" id="ot-sam-toggle-btn">' +
-        (samOn ? 'Turn Sam Off' : 'Turn Sam On') +
-      '</button>';
-
-    card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
-    card.querySelector('#ot-sam-toggle-btn').addEventListener('click', function() {
-      setSamStatus(samOn ? STATUS.SAM_OFF : STATUS.SAM_ON, this);
-    });
     document.body.appendChild(card);
     document.addEventListener('keydown', samEscHandler);
+
+    renderSamView('main');
+  }
+
+  function renderSamView(view) {
+    var card = document.getElementById('ot-sam-popup');
+    if (!card) return;
+
+    var status = getAITeamStatus();
+    var lead = samLeadName();
+    var html = samHeaderHTML();
+
+    if (view === 'main') {
+      if (status === STATUS.SAM_ON) {
+        html +=
+          '<div class="ot-sam-status">Sam\u2019s on the clock. He\u2019s texting with ' + lead + ' and working to book you a call.</div>' +
+          '<div class="ot-sam-note">Turn him off and he steps aside \u2014 you become the person in charge of this lead.</div>' +
+          '<button type="button" class="ot-sam-btn" data-act="off">Turn Sam Off</button>';
+      } else if (status === STATUS.MIA_SAM_STANDBY) {
+        html +=
+          '<div class="ot-sam-status">Sam might be in the breakroom \u2014 but Mia\u2019s tagging him in the second ' + lead + ' texts back. Until then, he\u2019s on standby.</div>' +
+          '<button type="button" class="ot-sam-btn" data-act="standby-on">Turn Sam On</button>' +
+          '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="standby-off">Turn Sam Off</button>';
+      } else {
+        // Sam Off, Mia & Sam Off, or empty (pre-migration) — Sam is off.
+        html +=
+          '<div class="ot-sam-status">Sam\u2019s off the clock for ' + lead + ' \u2014 you\u2019re the person in charge of this lead right now.</div>' +
+          '<div class="ot-sam-note">Turn him on and he\u2019ll text with your seller and work to book you a call.</div>' +
+          '<button type="button" class="ot-sam-btn" data-act="on">Turn Sam On</button>';
+      }
+    } else if (view === 'standby-on') {
+      html +=
+        '<div class="ot-sam-status">Well\u2026 he kinda IS on. He might just really be in the breakroom.</div>' +
+        '<div class="ot-sam-note">The second ' + lead + ' responds, Sam grabs it. Give him a break \uD83D\uDE09</div>' +
+        '<button type="button" class="ot-sam-btn" data-act="close">Fair enough</button>';
+    } else if (view === 'standby-off') {
+      html +=
+        '<div class="ot-sam-status">Hold on \u2014 what\u2019s Mia supposed to do when ' + lead + ' responds?</div>' +
+        '<div class="ot-sam-warn">If Sam\u2019s off and you\u2019re not notified\u2026 who takes care of the lead?</div>' +
+        '<button type="button" class="ot-sam-btn" data-act="close">Keep Sam on Standby</button>' +
+        '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="off-notify">Turn Sam Off \u2014 just notify me when ' + lead + ' responds</button>';
+    }
+
+    card.innerHTML = html;
+    card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
+
+    var btns = card.querySelectorAll('[data-act]');
+    for (var i = 0; i < btns.length; i++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var act = btn.getAttribute('data-act');
+          if (act === 'close') closeSamPopup();
+          else if (act === 'on') setSamStatus(STATUS.SAM_ON, btn);
+          else if (act === 'off') setSamStatus(STATUS.SAM_OFF, btn);
+          else if (act === 'standby-on') renderSamView('standby-on');
+          else if (act === 'standby-off') renderSamView('standby-off');
+          else if (act === 'off-notify') setSamStatus(STATUS.MIA_SAM_OFF, btn);
+        });
+      })(btns[i]);
+    }
   }
 
   function samEscHandler(e) {
@@ -954,6 +1040,34 @@
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
   }
 
+  // V9: logged-in user via GHL's official AppUtils.Utilities.getCurrentUser()
+  // Returns { id, name, firstName, lastName, email, type, role }.
+  // Any failure resolves to UNKNOWN so the toggle itself never breaks.
+  function getLoggedInUser() {
+    try {
+      if (window.AppUtils && window.AppUtils.Utilities &&
+          typeof window.AppUtils.Utilities.getCurrentUser === 'function') {
+        return window.AppUtils.Utilities.getCurrentUser().then(function(u) {
+          return {
+            id: (u && u.id) || 'UNKNOWN',
+            name: (u && u.name) || 'UNKNOWN',
+            email: (u && u.email) || 'UNKNOWN'
+          };
+        }).catch(function() {
+          return { id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN' };
+        });
+      }
+    } catch (e) { /* fall through */ }
+    return Promise.resolve({ id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN' });
+  }
+
+  // V8: human-readable Sam state for the audit trail
+  function samStateLabel(status) {
+    if (status === STATUS.SAM_ON) return 'On';
+    if (status === STATUS.MIA_SAM_STANDBY) return 'Standby';
+    return 'Off'; // Sam Off, Mia & Sam Off, empty — Sam-wise it's Off
+  }
+
   function setSamStatus(value, btn) {
     if (SAM_WEBHOOK.indexOf('REPLACE') === 0) {
       alert('Sam\'s toggle backend isn\'t connected yet (webhook placeholder). No changes were made.');
@@ -961,14 +1075,28 @@
     }
     if (btn) { btn.disabled = true; btn.textContent = 'Working\u2026'; }
 
-    fetch(SAM_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contact: getContactId(),
-        location_id: getLocationId(),
-        value: value
-      })
+    var action = samStateLabel(getAITeamStatus()) + ' to ' + samStateLabel(value);
+
+    // V9: the person at the keyboard, via GHL's official AppUtils API
+    // (verified available in the whitelabel custom-code context).
+    // Resolves to a safe fallback if AppUtils ever goes missing —
+    // the toggle must never break over a nice-to-have audit column.
+    getLoggedInUser().then(function(user) {
+      return fetch(SAM_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'contactId': getContactId(),
+          'Location ID': getLocationId(),
+          'value': value,
+          'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
+          'timestamp': new Date().toISOString(),
+          'action': action,
+          'logged_in_user': user.name,
+          'logged_in_user_id': user.id,
+          'logged_in_user_email': user.email
+        })
+      });
     }).then(function(res) {
       if (res.ok) {
         statusOverride = { contactId: getContactId(), value: value, ts: Date.now() };
@@ -979,7 +1107,7 @@
       }
     }).catch(function(err) {
       log('Sam toggle failed: ' + err.message);
-      if (btn) { btn.disabled = false; btn.textContent = (value === STATUS.SAM_ON) ? 'Turn Sam On' : 'Turn Sam Off'; }
+      renderSamView('main');
       alert('Couldn\'t update Sam right now. Nothing was changed \u2014 please try again.');
     });
   }
