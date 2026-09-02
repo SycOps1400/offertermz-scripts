@@ -3,6 +3,17 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 11 *** — SAM'S POPUP JOINS THE FAMILY (Mia's design language)
+ * UPDATES FROM V10:
+ * - Popup rebuilt on the Mia page's stage: navy-deep gradient, orange
+ *   radial glow behind a large portrait, Playfair Display headline,
+ *   frosted bubble body, full-width orange CTA. Width min(650px, 96vw)
+ *   matching the Mia popup; height auto (content-fitted).
+ * - Copy accuracy fix: Sam ON = ARMED, not texting. "The moment {lead}
+ *   texts, he's on it" — never claims a conversation that may not exist.
+ * - State faces: IMG.samOn / samOff / samStandby slots with graceful
+ *   fallback to the base portrait until the images are generated.
+ *
  * *** VERSION 10 *** — THE DOCK NEVER LIES (cached truth across panel tabs)
  * UPDATES FROM V9:
  * - Switching the side panel to DND/Actions unmounts GHL's field folders,
@@ -168,6 +179,11 @@
 
   var IMG = {
     sam:  'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771a32ae01952f74ab5f2.webp',
+    // V11: state faces for Sam's popup — swap in real URLs when generated.
+    // Fallback chain: state face -> base portrait.
+    samOn: '',       // e.g. confident/engaged expression
+    samOff: '',      // off-duty/neutral expression
+    samStandby: '',  // breakroom / coffee mug
     mia:  'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a97717bef6af944f0041ade.webp',
     ruby: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771c1ef6af944f0041e25.webp',
     tate: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771e49b2eaead5c292992.webp'
@@ -412,6 +428,15 @@
   function injectStyles() {
     if (document.getElementById('ot-team-dock-styles')) return;
 
+    // V11: Mia-page fonts for the popup family (Playfair headline, Jakarta body)
+    if (!document.getElementById('ot-team-dock-fonts')) {
+      var fonts = document.createElement('link');
+      fonts.id = 'ot-team-dock-fonts';
+      fonts.rel = 'stylesheet';
+      fonts.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@500;600;800&display=swap';
+      document.head.appendChild(fonts);
+    }
+
     var style = document.createElement('style');
     style.id = 'ot-team-dock-styles';
     style.textContent =
@@ -618,7 +643,7 @@
         'filter: grayscale(1); opacity: 0.55;' +
       '}' +
 
-      /* ── V4: Sam toggle popup ── */
+      /* ── V11: Sam popup — Mia's design language ── */
       '#ot-sam-overlay {' +
         'position: fixed; inset: 0; z-index: 99998;' +
         'background: rgba(14,26,43,0.72);' +
@@ -626,50 +651,70 @@
       '#ot-sam-popup {' +
         'position: fixed; z-index: 99999; top: 50%; left: 50%;' +
         'transform: translate(-50%, -50%);' +
-        'width: min(360px, 92vw);' +
-        'background: #1E3A5F; border-radius: 16px;' +
+        'width: min(650px, 96vw);' +
+        'max-height: 92vh; overflow-y: auto;' +
+        'background: linear-gradient(170deg, #1E3A5F 0%, #0d1f38 62%);' +
+        'border-radius: 22px;' +
         'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
-        'padding: 20px;' +
-        'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
+        'padding: 26px 26px 30px;' +
+        'font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
+        'text-align: center;' +
       '}' +
-      '#ot-sam-popup .ot-sam-head {' +
-        'display: flex; align-items: center; gap: 12px; margin-bottom: 12px;' +
+      '#ot-sam-popup .ot-samp-portrait {' +
+        'position: relative; height: 190px; margin: 4px auto 2px;' +
       '}' +
-      '#ot-sam-popup .ot-sam-avatar {' +
-        'width: 52px; height: 52px; border-radius: 50%;' +
-        'border: 2.5px solid #E85A33; background: #2a5080;' +
-        'overflow: hidden; box-sizing: border-box; flex: 0 0 auto;' +
+      '#ot-sam-popup .ot-samp-glow {' +
+        'position: absolute; inset: -30% -35%;' +
+        'background: radial-gradient(50% 55% at 50% 62%, rgba(232,90,51,.30), transparent 70%);' +
+        'pointer-events: none;' +
       '}' +
-      '#ot-sam-popup .ot-sam-avatar img {' +
-        'width: 100%; height: 100%; display: block; object-fit: cover;' +
+      '#ot-sam-popup .ot-samp-portrait img {' +
+        'position: relative; height: 100%; width: auto; max-width: 80%;' +
+        'object-fit: contain; display: block; margin: 0 auto;' +
       '}' +
-      '#ot-sam-popup .ot-sam-title {' +
-        'color: #ffffff; font-size: 16px; font-weight: 700; line-height: 1.2;' +
+      '#ot-sam-popup .ot-samp-status {' +
+        'display: inline-flex; align-items: center; gap: 9px;' +
+        'font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.7);' +
+        'margin: 10px 0 12px;' +
       '}' +
-      '#ot-sam-popup .ot-sam-sub {' +
-        'color: #c8d0da; font-size: 12px; font-weight: 500;' +
+      '#ot-sam-popup .ot-samp-dot {' +
+        'width: 9px; height: 9px; border-radius: 50%; display: inline-block;' +
       '}' +
-      '#ot-sam-popup .ot-sam-status {' +
-        'color: #ffffff; font-size: 14px; line-height: 1.5; margin-bottom: 8px;' +
+      '#ot-sam-popup .ot-samp-say {' +
+        'font-family: "Playfair Display", Georgia, serif;' +
+        'font-size: clamp(24px, 5vw, 30px); font-weight: 700;' +
+        'line-height: 1.18; letter-spacing: -0.012em; color: #ffffff;' +
+        'margin: 0 6px 14px;' +
       '}' +
-      '#ot-sam-popup .ot-sam-note {' +
-        'color: #c8d0da; font-size: 12px; line-height: 1.5; margin-bottom: 8px;' +
+      '#ot-sam-popup .ot-samp-bubble {' +
+        'background: rgba(255,255,255,.07);' +
+        'border: 1px solid rgba(255,255,255,.22);' +
+        'border-radius: 22px;' +
+        'padding: 18px 22px;' +
+        'box-shadow: 0 24px 70px rgba(0,0,0,.35);' +
+        'color: rgba(255,255,255,.85);' +
+        'font-size: 15px; font-weight: 500; line-height: 1.55;' +
+        'text-align: left; margin-bottom: 18px;' +
       '}' +
       '#ot-sam-popup .ot-sam-warn {' +
-        'color: #f9b47a; font-size: 12px; line-height: 1.5; margin-bottom: 8px;' +
+        'color: #f9b47a; font-size: 13px; line-height: 1.5; margin: -8px 4px 14px; text-align: left;' +
       '}' +
       '#ot-sam-popup .ot-sam-btn {' +
         'display: block; width: 100%; border: none; cursor: pointer;' +
-        'background: linear-gradient(135deg, #f9603a 0%, #e54d2a 100%);' +
-        'color: #ffffff; font-size: 15px; font-weight: 700;' +
-        'padding: 12px; border-radius: 10px; margin-top: 10px;' +
+        'font-family: inherit; font-size: 17px; font-weight: 800;' +
+        'color: #ffffff;' +
+        'background: linear-gradient(135deg, #E85A33, #c94820);' +
+        'border-radius: 14px; padding: 17px 30px; margin-top: 10px;' +
+        'box-shadow: 0 14px 40px rgba(232,90,51,.4);' +
+        'transition: transform .2s, opacity .2s;' +
       '}' +
+      '#ot-sam-popup .ot-sam-btn:hover { transform: translateY(-1px); }' +
       '#ot-sam-popup .ot-sam-btn--secondary {' +
-        'background: rgba(255,255,255,0.10);' +
-        'font-weight: 600;' +
+        'background: rgba(255,255,255,.10);' +
+        'box-shadow: none; font-weight: 600; font-size: 15px;' +
       '}' +
       '#ot-sam-popup .ot-sam-btn:disabled {' +
-        'opacity: 0.6; cursor: default;' +
+        'opacity: 0.6; cursor: default; transform: none;' +
       '}' +
       '#ot-sam-popup .ot-sam-close {' +
         'position: absolute; top: 12px; right: 14px;' +
@@ -995,15 +1040,12 @@
     return n || 'the lead';
   }
 
-  function samHeaderHTML() {
-    return '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
-      '<div class="ot-sam-head">' +
-        '<span class="ot-sam-avatar"><img src="' + IMG.sam + '" alt="Sam"></span>' +
-        '<span>' +
-          '<div class="ot-sam-title">Sam</div>' +
-          '<div class="ot-sam-sub">Acquisitionist</div>' +
-        '</span>' +
-      '</div>';
+  function samStateFace(state) {
+    // V11: state faces with graceful fallback to the base portrait
+    if (state === 'on' && IMG.samOn) return IMG.samOn;
+    if (state === 'off' && IMG.samOff) return IMG.samOff;
+    if (state === 'standby' && IMG.samStandby) return IMG.samStandby;
+    return IMG.sam;
   }
 
   function openSamPopup() {
@@ -1028,40 +1070,57 @@
 
     var status = getAITeamStatus();
     var lead = samLeadName();
-    var html = samHeaderHTML();
+
+    // Per-view stage pieces
+    var face, dotColor, say, body, buttons;
 
     if (view === 'main') {
       if (status === STATUS.SAM_ON) {
-        html +=
-          '<div class="ot-sam-status">Sam\u2019s on the clock. He\u2019s texting with ' + lead + ' and working to book you a call.</div>' +
-          '<div class="ot-sam-note">Turn him off and he steps aside \u2014 you become the person in charge of this lead.</div>' +
-          '<button type="button" class="ot-sam-btn" data-act="off">Turn Sam Off</button>';
+        face = samStateFace('on'); dotColor = '#22c55e';
+        say = 'Sam\u2019s on the clock for ' + lead + '.';
+        body = 'The moment ' + lead + ' texts, he\u2019s on it \u2014 working the conversation to book you a call. Turn him off and he steps aside; you become the person in charge of this lead.';
+        buttons = '<button type="button" class="ot-sam-btn" data-act="off">Turn Sam Off</button>';
       } else if (status === STATUS.MIA_SAM_STANDBY) {
-        html +=
-          '<div class="ot-sam-status">Sam might be in the breakroom \u2014 but Mia\u2019s tagging him in the second ' + lead + ' texts back. Until then, he\u2019s on standby.</div>' +
+        face = samStateFace('standby'); dotColor = '#f59e0b';
+        say = 'Sam might be in the breakroom.';
+        body = 'Mia\u2019s tagging him in the second ' + lead + ' texts back. Until then, he\u2019s on standby.';
+        buttons =
           '<button type="button" class="ot-sam-btn" data-act="standby-on">Turn Sam On</button>' +
           '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="standby-off">Turn Sam Off</button>';
       } else {
-        // Sam Off, Mia & Sam Off, or empty (pre-migration) — Sam is off.
-        html +=
-          '<div class="ot-sam-status">Sam\u2019s off the clock for ' + lead + ' \u2014 you\u2019re the person in charge of this lead right now.</div>' +
-          '<div class="ot-sam-note">Turn him on and he\u2019ll text with your seller and work to book you a call.</div>' +
-          '<button type="button" class="ot-sam-btn" data-act="on">Turn Sam On</button>';
+        face = samStateFace('off'); dotColor = '#8896a5';
+        say = 'Sam\u2019s off the clock for ' + lead + '.';
+        body = 'You\u2019re the person in charge of this lead right now. Turn him on and he\u2019ll engage the moment ' + lead + ' texts \u2014 working to book you a call.';
+        buttons = '<button type="button" class="ot-sam-btn" data-act="on">Turn Sam On</button>';
       }
     } else if (view === 'standby-on') {
-      html +=
-        '<div class="ot-sam-status">Well\u2026 he kinda IS on. He might just really be in the breakroom.</div>' +
-        '<div class="ot-sam-note">The second ' + lead + ' responds, Sam grabs it. Give him a break \uD83D\uDE09</div>' +
-        '<button type="button" class="ot-sam-btn" data-act="close">Fair enough</button>';
+      face = samStateFace('standby'); dotColor = '#f59e0b';
+      say = 'Well\u2026 he kinda IS on.';
+      body = 'He might just really be in the breakroom. The second ' + lead + ' responds, Sam grabs it. Give him a break \uD83D\uDE09';
+      buttons = '<button type="button" class="ot-sam-btn" data-act="close">Fair enough</button>';
     } else if (view === 'standby-off') {
-      html +=
-        '<div class="ot-sam-status">Hold on \u2014 what\u2019s Mia supposed to do when ' + lead + ' responds?</div>' +
-        '<div class="ot-sam-warn">If Sam\u2019s off and you\u2019re not notified\u2026 who takes care of the lead?</div>' +
+      face = samStateFace('standby'); dotColor = '#f59e0b';
+      say = 'Hold on \u2014 what about Mia?';
+      body = 'What\u2019s Mia supposed to do when ' + lead + ' responds? If Sam\u2019s off and you\u2019re not notified\u2026 who takes care of the lead?';
+      buttons =
         '<button type="button" class="ot-sam-btn" data-act="close">Keep Sam on Standby</button>' +
         '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="off-notify">Turn Sam Off \u2014 just notify me when ' + lead + ' responds</button>';
     }
 
-    card.innerHTML = html;
+    card.innerHTML =
+      '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
+      '<div class="ot-samp-portrait">' +
+        '<div class="ot-samp-glow"></div>' +
+        '<img src="' + face + '" alt="Sam">' +
+      '</div>' +
+      '<div class="ot-samp-status">' +
+        '<span class="ot-samp-dot" style="background:' + dotColor + ';"></span>' +
+        '<strong style="color:#fff;">Sam</strong>&nbsp;Acquisitionist' +
+      '</div>' +
+      '<div class="ot-samp-say">' + say + '</div>' +
+      '<div class="ot-samp-bubble">' + body + '</div>' +
+      buttons;
+
     card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
 
     var btns = card.querySelectorAll('[data-act]');

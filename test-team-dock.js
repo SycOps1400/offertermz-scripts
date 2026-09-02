@@ -345,7 +345,7 @@ section('Sam toggle popup (V4)');
   const popup = dom.window.document.getElementById('ot-sam-popup');
   check('popup created', !!popup);
   check('ON view: "on the clock" voice', popup.textContent.includes('on the clock'));
-  check('ON view: texting, never talking', popup.textContent.includes('texting with Sarah') && !popup.textContent.includes('talk'));
+  check('ON view: armed-not-texting copy', popup.textContent.includes('The moment Sarah texts') && !popup.textContent.includes('talk'));
   const btn = popup.querySelector('[data-act="off"]');
   check('ON view: single action = Turn Sam Off', btn && btn.textContent === 'Turn Sam Off');
   dock.closeSamPopup();
