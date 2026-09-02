@@ -1,7 +1,20 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * OfferTermz Loader v8
+ * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * *** VERSION 9 *** — THE SMRT TEAM DOCK (SANDBOX ONLY)
+ * UPDATES FROM V8:
+ * - New module: ot-team-dock.js — the navy Team Dock bar (SMRT AI Team
+ *   portrait circles + tool circles + lead chip) that REPLACES the three
+ *   header buttons and the lead strip.
+ * - New rollout switch: ENABLE_DOCK_EVERYWHERE (false in this version).
+ *   Sandbox gets the dock; every production subaccount keeps the exact
+ *   v8 experience — three buttons + lead strip — untouched.
+ * - In dock mode the loader skips creating the header buttons and skips
+ *   loading ot-leadstrip.js (the dock's lead chip is the strip's heir).
+ *   Both are restorable by flipping the flag logic — nothing deleted.
+ * - TO ROLL OUT TO EVERYONE (next tag): set ENABLE_DOCK_EVERYWHERE = true.
  *
  * *** VERSION 8 *** — THE LAUNCH VERSION
  * UPDATES FROM V7:
@@ -44,6 +57,12 @@
   // false = new modules + The Closer button appear in the SANDBOX only.
   // true  = everyone gets them (flip this in the rollout tag).
   var ENABLE_CLOSER_EVERYWHERE = true;
+
+  // V9: The Team Dock rollout switch.
+  // false = the dock (and the retirement of header buttons + lead strip)
+  //         happens in the SANDBOX only. Production stays pure v8.
+  // true  = everyone gets the dock (flip this in the rollout tag).
+  var ENABLE_DOCK_EVERYWHERE = false;
   
   function getLoaderVersion() {
     var scripts = document.querySelectorAll('script[src*="offertermz-scripts"]');
@@ -65,6 +84,9 @@
 
   // V6: one flag that answers "does this account get The Closer experience?"
   var CLOSER_ENABLED = ENABLE_CLOSER_EVERYWHERE || IS_SANDBOX;
+
+  // V9: one flag that answers "does this account get the Team Dock?"
+  var DOCK_ENABLED = ENABLE_DOCK_EVERYWHERE || IS_SANDBOX;
   
   var GITHUB_BASE_URL = IS_SANDBOX
     ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@dev/'
@@ -79,11 +101,20 @@
   ];
 
   // V6: The Closer pipeline. Order matters: ot-autotabs.js must load
-  // before the two modules that depend on its READY signal.
+  // before the modules that depend on its READY signal.
+  // V9: in dock mode the lead strip is not loaded — the dock's lead chip
+  // does its job. The strip module itself is untouched and restorable.
   if (CLOSER_ENABLED) {
     MODULES.push('ot-autotabs.js');
     MODULES.push('ot-closer.js');
-    MODULES.push('ot-leadstrip.js');
+    if (!DOCK_ENABLED) {
+      MODULES.push('ot-leadstrip.js');
+    }
+  }
+
+  // V9: the Team Dock itself (last — it depends on everything above).
+  if (DOCK_ENABLED) {
+    MODULES.push('ot-team-dock.js');
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -210,6 +241,10 @@
   }
 
   function createHeaderButtons() {
+    // V9: in dock mode the buttons are retired — ot-team-dock.js owns the
+    // header UI. Report success so the app-watcher stands down.
+    if (DOCK_ENABLED) return true;
+
     if (document.getElementById('ot-header-buttons')) return false;
     
     var headerControls = document.querySelector('.hl_header--controls');
@@ -343,7 +378,7 @@
   // START LOADING
   // ═══════════════════════════════════════════════════════════════════════
 
-  log('🚀 OfferTermz Loader v8 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ')');
+  log('🚀 OfferTermz Loader v9 starting... (Sandbox: ' + IS_SANDBOX + ', Closer: ' + CLOSER_ENABLED + ', Dock: ' + DOCK_ENABLED + ')');
   
   loadConfetti(function() {
     loadNextModule(0);
