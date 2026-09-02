@@ -28,7 +28,7 @@ function makeContactDOM(opts) {
   const fields = opts.fields || {
     'First Name': 'Sarah',
     'Street Address': '1907 N Walnut Ln',
-    'Phone': '(812) 773-8873'
+    'Phone (Primary)': '(812) 773-8873'
   };
 
   let fieldHTML = '';
@@ -146,9 +146,14 @@ section('Phone normalization');
     ['+44 20 7946 0958', '+44 20 7946 0958'], // non-US shape → raw passthrough
   ];
   for (const [input, expected] of cases) {
-    const dom = makeContactDOM({ fields: { 'First Name': 'X', 'Street Address': 'Y St', 'Phone': input } });
+    const dom = makeContactDOM({ fields: { 'First Name': 'X', 'Street Address': 'Y St', 'Phone (Primary)': input } });
     const dock = loadDock(dom);
     check('"' + input + '" → "' + expected + '"', dock.getLeadPhone() === expected);
+  }
+  {
+    const dom = makeContactDOM({ fields: { 'First Name': 'X', 'Street Address': 'Y St', 'Phone': '(812) 555-0000' } });
+    const dock = loadDock(dom);
+    check('plain "Phone" label still works as fallback', dock.getLeadPhone() === '+18125550000');
   }
 }
 

@@ -3,6 +3,16 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 2 ***
+ * UPDATES FROM V1 (all caught in first sandbox test):
+ * - FIX: portrait circles rendered giant — .ot-dock-circle spans were
+ *   inline, so width/height were ignored. display:flex added (the tool
+ *   circles already had it, which is why only they rendered correctly).
+ * - FIX: phone read as empty — the real GHL label is "Phone (Primary)",
+ *   not "Phone". Primary tried first, plain "Phone" kept as fallback.
+ * - Popup enlarged: min(560px, 94vw) × min(800px, 90vh).
+ * - Circles 44px → 48px.
+ *
  * *** VERSION 1 ***
  *
  * FILE: ot-team-dock.js
@@ -156,8 +166,10 @@
 
   // Lead phone, normalized toward +1XXXXXXXXXX (US). Falls back to the
   // trimmed raw value when the digits don't fit a US shape.
+  // V2: the real GHL label is "Phone (Primary)" — sandbox testing caught
+  // the exact-match miss. Try it first, then plain "Phone" as fallback.
   function getLeadPhone() {
-    var raw = getFieldByLabel('Phone');
+    var raw = getFieldByLabel('Phone (Primary)') || getFieldByLabel('Phone');
     if (!raw) return '';
     var digits = raw.replace(/\D/g, '');
     if (digits.length === 10) return '+1' + digits;
@@ -269,7 +281,8 @@
         'cursor: pointer;' +
       '}' +
       '#' + DOCK_ID + ' .ot-dock-circle {' +
-        'width: 44px; height: 44px; border-radius: 50%;' +
+        'display: flex; align-items: center; justify-content: center;' + /* v2: without display:flex, spans ignore width/height and portraits render giant */
+        'width: 48px; height: 48px; border-radius: 50%;' +
         'border: 2.5px solid #E85A33;' +
         'background: #2a5080;' +
         'overflow: hidden;' +
@@ -329,7 +342,6 @@
       /* ── Tool chips ── */
       '#' + DOCK_ID + ' .ot-dock-item.ot-dock-tool .ot-dock-circle {' +
         'background: #ffffff;' +
-        'display: flex; align-items: center; justify-content: center;' +
       '}' +
       '#' + DOCK_ID + ' .ot-dock-item.ot-dock-tool svg {' +
         'width: 20px; height: 20px; stroke: #1E3A5F; fill: none;' +
@@ -361,7 +373,7 @@
       '#' + POPUP_ID + ' {' +
         'position: fixed; z-index: 99999;' +
         'top: 50%; left: 50%;' +
-        'width: min(480px, 92vw); height: min(720px, 88vh);' +
+        'width: min(560px, 94vw); height: min(800px, 90vh);' + /* v2: enlarged */
         'background: #1E3A5F;' +
         'border-radius: 18px;' +
         'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
