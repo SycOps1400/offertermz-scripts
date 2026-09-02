@@ -2,7 +2,7 @@
 
 Running record of everything agreed in design discussions. Only settled decisions and items explicitly parked for later. Updated as discussions continue.
 
-Last updated: Sep 2, 2026 — D1–D19 locked. Shipped to sandbox: dock v6 (status rings + Sam three-voice popup + live webhook), loader v9, chooser. Sam's Make scenario live. Next: v6 sandbox test, then Mia-side workflow wiring (field-change → Conversation AI + Mia conclusion rewrites). Shipped to sandbox: dock v3, loader v9, whitelabel chooser. Sam toggle build starts after D17/D18 close.
+Last updated: Sep 2, 2026 — D1–D20 locked. Shipped to sandbox: dock v6 (status rings + Sam three-voice popup + live webhook), loader v9, chooser. Sam's Make scenario live. Next: v6 sandbox test, then Mia-side workflow wiring (field-change → Conversation AI + Mia conclusion rewrites). Shipped to sandbox: dock v3, loader v9, whitelabel chooser. Sam toggle build starts after D17/D18 close.
 
 ---
 
@@ -106,6 +106,12 @@ Full contract the dock builds on every Mia click:
   - "Turn Sam On" → playful no-op ("he kinda IS on… give him a break 😉"). Architecturally correct: Sam only responds to inbound, so going fully On during standby only ends Mia's nurturing for zero benefit.
   - "Turn Sam Off" → confirmation ("who takes care of the lead?") with Keep Sam on Standby (no change) or "Turn Sam Off — just notify me when {lead} responds" → writes **Mia Following Up & Sam Off**; the field-change workflow rewrites Mia's conclusion to notify-me so a forgotten toggle can never ghost-tag Sam back in or silently lose a deal.
 - Write failure → popup returns to main view, nothing changes, honest alert.
+
+### D20 — Panel-tab reality: All-fields autoswitch + cached truth
+- GHL only mounts the field folders under the side panel's "All fields" tab; DND/Actions unmount them entirely. Two consequences, two fixes:
+- **Autotabs v3:** on load/lead-hop, ensure the All-fields tab is active FIRST (.hr-tabs-tab[data-name="all-fields"], active class hr-tabs-tab--active, throttled click) before opening folders. Loop stops at READY, so users are never yanked back from DND/Actions afterward. (Autotabs v2 en route: fast 400ms window ~10s, then patient 3s retries forever — the old permanent give-up caused the refresh-fixes-it pulsing.)
+- **Dock v10 — cached truth:** the dock remembers the last successfully READ status + lead-chip text per contact; when the panel is away (canary: First Name label absent), it shows the remembered state instead of false-gray rings and a vanishing chip. Keyed by contactId — never the wrong lead. No cache = honest all-dim (no invented truth).
+- Accepted edge: a workflow changing status while the user sits on DND/Actions shows the cached value until return or lead hop. Seconds of staleness beats guaranteed false-off on every tab switch.
 
 ---
 

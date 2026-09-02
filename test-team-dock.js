@@ -446,6 +446,59 @@ section('Sam toggle popup (V4)');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+section('V10: cached truth across panel tabs (the dock never lies)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatus: 'Sam On' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  const doc = dom.window.document;
+  check('mounted: Sam green', doc.getElementById('ot-dock-sam').className.includes('ot-state-on'));
+  check('mounted: chip shows lead', doc.getElementById('ot-dock-lead-text').textContent === 'Sarah, 1907 N Walnut Ln');
+
+  // Simulate switching to DND/Actions: GHL unmounts every field container
+  doc.querySelectorAll('.hr-form-item__container').forEach(e => e.remove());
+  check('simulated unmount: First Name gone', ![...doc.querySelectorAll('span.hr-form-item-label__text')].some(l => l.textContent.trim() === 'First Name'));
+
+  dock.refresh();
+  check('unmounted: Sam STAYS green (cached truth)', doc.getElementById('ot-dock-sam').className.includes('ot-state-on'));
+  check('unmounted: status reader returns cached "Sam On"', dock.getAITeamStatus() === 'Sam On');
+  check('unmounted: chip keeps showing the lead', doc.getElementById('ot-dock-lead-text').textContent === 'Sarah, 1907 N Walnut Ln');
+  check('unmounted: chip still visible', doc.querySelector('.ot-dock-lead').style.display === 'flex');
+
+  // Standby state cached too — Mia must stay lit on Actions tab
+  const dom2 = makeContactDOM({ aiStatus: 'Mia Following Up & Sam On Standby' });
+  const dock2 = loadDock(dom2);
+  dock2.refresh();
+  const doc2 = dom2.window.document;
+  doc2.querySelectorAll('.hr-form-item__container').forEach(e => e.remove());
+  dock2.refresh();
+  check('unmounted: Sam stays amber (standby cached)', doc2.getElementById('ot-dock-sam').className.includes('ot-state-standby'));
+  check('unmounted: Mia stays green (cached)', doc2.getElementById('ot-dock-mia').className.includes('ot-state-on'));
+
+  // Control: no cache (fields never mounted) => honest all-off
+  const dom3 = makeContactDOM({});
+  doc3 = dom3.window.document;
+  doc3.querySelectorAll('.hr-form-item__container').forEach(e => e.remove());
+  const dock3c = loadDock(dom3);
+  dock3c.refresh();
+  check('no cache + unmounted => idle (no invented truth)', doc3.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('Autotabs v3 — static analysis');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const at = fs.readFileSync('./ot-autotabs.js', 'utf8');
+  check('v3 header present', at.includes('VERSION 3'));
+  check('All-fields selector present', at.includes('[data-name="all-fields"]'));
+  check('active-class detection present', at.includes('hr-tabs-tab--active'));
+  check('panel click throttled', at.includes('lastPanelClickAt'));
+  check('v2 slow mode survives', at.includes('SLOW_CHECK_EVERY_MS') && at.includes('slowMode = true'));
+  check('panel switch precedes folder work (step 0)', at.indexOf('data-name="all-fields"') < at.indexOf('// 1) Open any tab'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 section('Loader v9 — flag & module wiring (static analysis)');
 // ═══════════════════════════════════════════════════════════════════════
 {

@@ -3,6 +3,18 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 10 *** — THE DOCK NEVER LIES (cached truth across panel tabs)
+ * UPDATES FROM V9:
+ * - Switching the side panel to DND/Actions unmounts GHL's field folders,
+ *   which made every ring go falsely gray and the lead chip vanish —
+ *   terrifying for customers ("my AI died!"). V10 remembers the last
+ *   successfully READ status + chip text per contact and shows the
+ *   remembered truth whenever the panel is away (canary: First Name
+ *   label absent). Cache is keyed by contactId — stale-but-honest for
+ *   seconds, never the wrong lead, never a false off.
+ * - Accepted edge (logged): a workflow changing status while the user
+ *   sits on DND/Actions shows the cached value until they return or hop.
+ *
  * *** VERSION 9 *** — THE PERSON AT THE KEYBOARD
  * UPDATES FROM V8:
  * - logged_in_user / logged_in_user_id / logged_in_user_email added to the
@@ -257,6 +269,28 @@
   var statusOverride = { contactId: '', value: '', ts: 0 };
   var OVERRIDE_TTL_MS = 90000;
 
+  // V10: last successfully READ truth, per contact. When the user switches
+  // the side panel to DND/Actions, GHL unmounts the field folders — without
+  // this memory every ring would go falsely gray ("my AI died!"). Stale for
+  // seconds is honest; false-off is a lie. Cleared implicitly on lead hop
+  // (cache is keyed by contactId).
+  var statusCache = { contactId: '', value: '' };
+  var chipCache = { contactId: '', text: '' };
+
+  function fieldLabelExists(labelText) {
+    var labels = document.querySelectorAll('span.hr-form-item-label__text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim().toLowerCase() === labelText.toLowerCase()) return true;
+    }
+    return false;
+  }
+
+  // Canary: if First Name isn't mounted, the whole field panel is away
+  // (DND/Actions tab) — absence of data, not data of absence.
+  function fieldsMounted() {
+    return fieldLabelExists('First Name');
+  }
+
   function getAITeamStatusRaw() {
     var labels = document.querySelectorAll('span.hr-form-item-label__text');
     for (var i = 0; i < labels.length; i++) {
@@ -292,13 +326,22 @@
     var cid = getContactId();
     if (statusOverride.contactId === cid &&
         (Date.now() - statusOverride.ts) < OVERRIDE_TTL_MS) {
+      statusCache = { contactId: cid, value: statusOverride.value }; // V10: seed the memory
       return statusOverride.value;
     }
     var raw = getAITeamStatusRaw();
     for (var key in STATUS) {
-      if (STATUS[key] === raw) return raw;
+      if (STATUS[key] === raw) {
+        statusCache = { contactId: cid, value: raw }; // V10: remember the truth
+        return raw;
+      }
     }
-    return ''; // unknown / empty / pre-migration => everything off (D18)
+    // V10: fields unmounted (DND/Actions) + we have this contact's truth
+    // in memory => show the remembered state instead of a false all-off.
+    if (!fieldsMounted() && statusCache.contactId === cid && statusCache.value) {
+      return statusCache.value;
+    }
+    return ''; // truly empty on a mounted panel => everything off (D18)
   }
 
   // Lead phone, normalized toward +1XXXXXXXXXX (US). Falls back to the
@@ -823,8 +866,12 @@
 
     dock = getOrCreateDock();
 
-    // Lead chip: LEAD first name + street (the old strip's job)
+    // Lead chip: LEAD first name + street (the old strip's job).
+    // V10: rides the same cached-truth memory as the rings — when the
+    // field panel unmounts (DND/Actions), the chip keeps showing this
+    // contact's remembered text instead of blinking away.
     var leadEl = dock.querySelector('.ot-dock-lead');
+    var cid = getContactId();
     if (tabsReady()) {
       var leadFirstName = getFieldByLabel('First Name');
       var street = getFieldByLabel('Street Address');
@@ -832,8 +879,13 @@
       if (leadFirstName && street) text = leadFirstName + ', ' + street;
       else text = leadFirstName || street;
 
+      if (!text && !fieldsMounted() && chipCache.contactId === cid && chipCache.text) {
+        text = chipCache.text; // remembered truth while the panel is away
+      }
+
       var textEl = document.getElementById('ot-dock-lead-text');
       if (text) {
+        chipCache = { contactId: cid, text: text };
         if (textEl && textEl.textContent !== text) {
           textEl.textContent = text;
           log('📍 TeamDock lead chip: ' + text);
