@@ -3,6 +3,28 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 14 *** — THE WARDROBE GETS A VOICE
+ * UPDATES FROM V13:
+ * - Five off-duty Sams live in the pool (casual, fishing, grilling, golf,
+ *   vacation), each themed end-to-end: image + headline + flavor line +
+ *   custom CTA label. The CTA always performs Turn Sam On; humor never
+ *   costs clarity — the functional sentence ships in every variant.
+ *
+ * *** VERSION 13 *** — SAM'S OFF-DUTY WARDROBE
+ * UPDATES FROM V12:
+ * - IMG.samOffPool: array of off-the-clock Sam images (golf outfit, etc.).
+ *   One is picked at RANDOM per popup open in the off state — stable
+ *   within the session, re-rolled next open. Popup only; the dock pill
+ *   always wears the professional headshot. Empty pool = base portrait.
+ *
+ * *** VERSION 12 *** — MATCHING CHROME
+ * UPDATES FROM V11:
+ * - Sam's popup now wears the same header strip as Mia's popup frame
+ *   (small ringed avatar, name, role, X) — same chrome, same width, same
+ *   stage; height stays content-fitted.
+ * - Fixed the horizontal scrollbar at the card's bottom edge (the glow
+ *   extends past the card; overflow-x now hidden).
+ *
  * *** VERSION 11 *** — SAM'S POPUP JOINS THE FAMILY (Mia's design language)
  * UPDATES FROM V10:
  * - Popup rebuilt on the Mia page's stage: navy-deep gradient, orange
@@ -179,11 +201,31 @@
 
   var IMG = {
     sam:  'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771a32ae01952f74ab5f2.webp',
-    // V11: state faces for Sam's popup — swap in real URLs when generated.
-    // Fallback chain: state face -> base portrait.
+    // V11/V13: state faces for Sam's popup — swap in real URLs when generated.
+    // Fallback chain: state face -> base portrait. POPUP ONLY — the dock
+    // pill always wears the professional headshot.
     samOn: '',       // e.g. confident/engaged expression
-    samOff: '',      // off-duty/neutral expression
     samStandby: '',  // breakroom / coffee mug
+    // V13/V14: off-the-clock wardrobe — one entry picked at RANDOM per
+    // popup open. Each entry themes the image, headline, flavor line, and
+    // CTA label (the CTA always performs Turn Sam On). Empty = defaults.
+    samOffPool: [
+      { url: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a98a233a1f3f48f4ba51753.png',
+        say: 'Sam\u2019s out and about.', flavor: 'Errands, sunshine, who knows.',
+        cta: 'Call Sam back to the office' },
+      { url: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a98a241a1f3f48f4ba5187b.png',
+        say: 'Sam\u2019s gone fishing.', flavor: 'The bass are allegedly biting.',
+        cta: 'Put the fish down, Sam \u2014 we\u2019ve got deals to close' },
+      { url: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a98a2510ba3728cefe01fbc.png',
+        say: 'Sam\u2019s manning the grill.', flavor: 'Medium-rare, as always.',
+        cta: 'Turn the grill off, Sam \u2014 and bring the steaks' },
+      { url: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a98a2d98a50b9d88a21e703.png',
+        say: 'Sam\u2019s on the back nine.', flavor: 'He swears this is networking.',
+        cta: 'Drop the putter, Sam \u2014 deals don\u2019t close themselves' },
+      { url: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a98a2e78a50b9d88a21e81c.png',
+        say: 'Sam\u2019s on vacation.', flavor: 'Somewhere with a beach, probably.',
+        cta: 'Cut it short, Sam \u2014 the office is calling' }
+    ],
     mia:  'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a97717bef6af944f0041ade.webp',
     ruby: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771c1ef6af944f0041e25.webp',
     tate: 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771e49b2eaead5c292992.webp'
@@ -652,13 +694,37 @@
         'position: fixed; z-index: 99999; top: 50%; left: 50%;' +
         'transform: translate(-50%, -50%);' +
         'width: min(650px, 96vw);' +
-        'max-height: 92vh; overflow-y: auto;' +
+        'max-height: 92vh; overflow-y: auto; overflow-x: hidden;' + /* v12: kill the glow-induced horizontal scrollbar */
         'background: linear-gradient(170deg, #1E3A5F 0%, #0d1f38 62%);' +
         'border-radius: 22px;' +
         'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
-        'padding: 26px 26px 30px;' +
+        'padding: 0;' + /* v12: header strip is flush; body carries its own padding */
         'font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;' +
         'text-align: center;' +
+      '}' +
+      /* v12: the same header chrome Mia's popup frame wears */
+      '#ot-sam-popup .ot-samp-head {' +
+        'display: flex; align-items: center; gap: 10px;' +
+        'padding: 10px 14px;' +
+        'background: #1E3A5F;' +
+        'text-align: left;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-head-avatar {' +
+        'width: 40px; height: 40px; border-radius: 50%;' +
+        'border: 2.5px solid #E85A33; background: #2a5080;' +
+        'overflow: hidden; box-sizing: border-box; flex: 0 0 auto;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-head-avatar img {' +
+        'width: 100%; height: 100%; display: block; object-fit: cover;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-head-title {' +
+        'color: #ffffff; font-size: 14px; font-weight: 700; line-height: 1.2;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-head-sub {' +
+        'color: #c8d0da; font-size: 11px; font-weight: 500;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-body {' +
+        'padding: 16px 26px 30px;' +
       '}' +
       '#ot-sam-popup .ot-samp-portrait {' +
         'position: relative; height: 190px; margin: 4px auto 2px;' +
@@ -717,7 +783,7 @@
         'opacity: 0.6; cursor: default; transform: none;' +
       '}' +
       '#ot-sam-popup .ot-sam-close {' +
-        'position: absolute; top: 12px; right: 14px;' +
+        'margin-left: auto;' + /* v12: lives in the header strip now */
         'border: none; background: rgba(255,255,255,0.12);' +
         'color: #ffffff; font-size: 16px; line-height: 1;' +
         'width: 28px; height: 28px; border-radius: 50%; cursor: pointer;' +
@@ -1040,10 +1106,19 @@
     return n || 'the lead';
   }
 
+  // V13/V14: the wardrobe entry chosen for THIS popup session — rolled
+  // once per open so nothing flickers mid-view, re-rolled next open.
+  var samOffPick = null;
+
+  function rollSamOffPick() {
+    if (!samOffPick && IMG.samOffPool && IMG.samOffPool.length) {
+      samOffPick = IMG.samOffPool[Math.floor(Math.random() * IMG.samOffPool.length)];
+    }
+    return samOffPick;
+  }
+
   function samStateFace(state) {
-    // V11: state faces with graceful fallback to the base portrait
     if (state === 'on' && IMG.samOn) return IMG.samOn;
-    if (state === 'off' && IMG.samOff) return IMG.samOff;
     if (state === 'standby' && IMG.samStandby) return IMG.samStandby;
     return IMG.sam;
   }
@@ -1088,10 +1163,14 @@
           '<button type="button" class="ot-sam-btn" data-act="standby-on">Turn Sam On</button>' +
           '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="standby-off">Turn Sam Off</button>';
       } else {
-        face = samStateFace('off'); dotColor = '#8896a5';
-        say = 'Sam\u2019s off the clock for ' + lead + '.';
-        body = 'You\u2019re the person in charge of this lead right now. Turn him on and he\u2019ll engage the moment ' + lead + ' texts \u2014 working to book you a call.';
-        buttons = '<button type="button" class="ot-sam-btn" data-act="on">Turn Sam On</button>';
+        var pick = rollSamOffPick();
+        face = (pick && pick.url) || IMG.sam;
+        dotColor = '#8896a5';
+        say = (pick && pick.say) || ('Sam\u2019s off the clock for ' + lead + '.');
+        var flavor = (pick && pick.flavor) ? (pick.flavor + ' ') : '';
+        body = flavor + 'You\u2019re the person in charge of this lead right now. Turn him on and he\u2019ll engage the moment ' + lead + ' texts \u2014 working to book you a call.';
+        var ctaLabel = (pick && pick.cta) || 'Turn Sam On';
+        buttons = '<button type="button" class="ot-sam-btn" data-act="on">' + ctaLabel + '</button>';
       }
     } else if (view === 'standby-on') {
       face = samStateFace('standby'); dotColor = '#f59e0b';
@@ -1108,18 +1187,27 @@
     }
 
     card.innerHTML =
-      '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
-      '<div class="ot-samp-portrait">' +
-        '<div class="ot-samp-glow"></div>' +
-        '<img src="' + face + '" alt="Sam">' +
+      '<div class="ot-samp-head">' +
+        '<span class="ot-samp-head-avatar"><img src="' + IMG.sam + '" alt="Sam"></span>' +
+        '<span>' +
+          '<div class="ot-samp-head-title">Sam</div>' +
+          '<div class="ot-samp-head-sub">Acquisitionist</div>' +
+        '</span>' +
+        '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
       '</div>' +
-      '<div class="ot-samp-status">' +
-        '<span class="ot-samp-dot" style="background:' + dotColor + ';"></span>' +
-        '<strong style="color:#fff;">Sam</strong>&nbsp;Acquisitionist' +
-      '</div>' +
-      '<div class="ot-samp-say">' + say + '</div>' +
-      '<div class="ot-samp-bubble">' + body + '</div>' +
-      buttons;
+      '<div class="ot-samp-body">' +
+        '<div class="ot-samp-portrait">' +
+          '<div class="ot-samp-glow"></div>' +
+          '<img src="' + face + '" alt="Sam">' +
+        '</div>' +
+        '<div class="ot-samp-status">' +
+          '<span class="ot-samp-dot" style="background:' + dotColor + ';"></span>' +
+          '<strong style="color:#fff;">Sam</strong>&nbsp;Acquisitionist' +
+        '</div>' +
+        '<div class="ot-samp-say">' + say + '</div>' +
+        '<div class="ot-samp-bubble">' + body + '</div>' +
+        buttons +
+      '</div>';
 
     card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
 
@@ -1144,6 +1232,7 @@
   }
 
   function closeSamPopup() {
+    samOffPick = null; // V13/V14: next open re-rolls the off-duty wardrobe
     document.removeEventListener('keydown', samEscHandler);
     var overlay = document.getElementById('ot-sam-overlay');
     var card = document.getElementById('ot-sam-popup');

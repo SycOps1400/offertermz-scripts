@@ -357,8 +357,8 @@ section('Sam toggle popup (V4)');
   dockOff.refresh();
   dockOff.openSamPopup();
   const popupOff = domOff.window.document.getElementById('ot-sam-popup');
-  check('OFF view: "off the clock" + in-charge framing', popupOff.textContent.includes('off the clock') && popupOff.textContent.includes('person in charge'));
-  check('OFF view: single action = Turn Sam On', popupOff.querySelector('[data-act="on"]').textContent === 'Turn Sam On');
+  check('OFF view: functional sentence survives theming', popupOff.textContent.includes('person in charge') && popupOff.textContent.includes('texts'));
+  check('OFF view: the action is always turn-on (label may be themed)', !!popupOff.querySelector('[data-act="on"]'));
   dockOff.closeSamPopup();
 
   // Standby: the two-step
@@ -443,6 +443,39 @@ section('Sam toggle popup (V4)');
     check('rings updated: Sam idle after the toggle', dom3.window.document.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
     check('popup closed after confirmed 200', !dom3.window.document.getElementById('ot-sam-popup'));
   }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V14: themed off-duty wardrobe');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatus: 'Sam Off' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  // Deterministic roll: always pick index 0 (casual)
+  dom.window.Math.random = () => 0;
+  dock.openSamPopup();
+  const doc = dom.window.document;
+  const img = doc.querySelector('#ot-sam-popup .ot-samp-portrait img');
+  check('themed image from pool (casual)', img && img.src.includes('6a98a233a1f3f48f4ba51753'));
+  check('themed headline', doc.getElementById('ot-sam-popup').textContent.includes('out and about'));
+  check('flavor + functional sentence both present',
+    doc.getElementById('ot-sam-popup').textContent.includes('Errands, sunshine') &&
+    doc.getElementById('ot-sam-popup').textContent.includes('the moment Sarah texts'));
+  check('themed CTA label', doc.querySelector('[data-act="on"]').textContent === 'Call Sam back to the office');
+  dock.closeSamPopup();
+
+  // Re-roll on next open: force index 1 (fishing)
+  dom.window.Math.random = () => 0.25;
+  dock.openSamPopup();
+  const img2 = doc.querySelector('#ot-sam-popup .ot-samp-portrait img');
+  check('re-rolled to a different outfit (fishing)', img2 && img2.src.includes('6a98a241a1f3f48f4ba5187b'));
+  check('fishing CTA', doc.querySelector('[data-act="on"]').textContent.includes('Put the fish down'));
+  dock.closeSamPopup();
+
+  const srcFile = fs.readFileSync('./ot-team-dock.js', 'utf8');
+  check('all five outfits in the pool', ['51753','5187b','01fbc','1e703','1e81c'].every(s => srcFile.includes(s)));
+  check('CTA still performs Turn Sam On (data-act unchanged)', srcFile.includes("data-act=\"on\">' + ctaLabel"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
