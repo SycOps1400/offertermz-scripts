@@ -3,6 +3,15 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 23 *** — MIA STOP PAYLOAD v2 (source + cleanup_tag)
+ * UPDATES FROM V22:
+ * - source renamed 'mia-popup' (dash), matching the page's 'mia-page' style.
+ * - cleanup_tag added per action, ready-made for the Make tags module:
+ *   owner takeover -> "processing mia from on to off"
+ *   handed to Sam  -> "processing mia from on to off and sam on"
+ *   Ahmed's tag-triggered workflows do the GHL cleanup (pull from
+ *   followup workflows, clear Mia's 4 fields, remove the tag).
+ *
  * *** VERSION 22 *** — THE FREE-RANGE PILL (drag, resize, remember)
  * UPDATES FROM V21:
  * - Drag anywhere on the navy background to place the pill (4px threshold
@@ -1780,15 +1789,17 @@
           var act = btn.getAttribute('data-act');
           if (act === 'close') closeSamPopup();
           else if (act === 'mia-stop-own') setMiaStop(STATUS.SAM_OFF, 'stop_owner_takeover',
+            'processing mia from on to off',
             'Mia Stop \u2192 Owner takes over', 'Telling Mia to wrap it up\u2026', btn);
           else if (act === 'mia-stop-sam') setMiaStop(STATUS.SAM_ON, 'stop_handed_to_sam',
+            'processing mia from on to off and sam on',
             'Mia Stop \u2192 Handed to Sam', 'Handing ' + samLeadName() + ' to Sam\u2026', btn);
         });
       })(btns[i]);
     }
   }
 
-  function setMiaStop(value, miaAction, actionLabel, workingLabel, btn) {
+  function setMiaStop(value, miaAction, cleanupTag, actionLabel, workingLabel, btn) {
     if (btn) { btn.disabled = true; btn.textContent = workingLabel; }
 
     getLoggedInUser().then(function(user) {
@@ -1798,8 +1809,9 @@
         body: JSON.stringify({
           'contactId': getContactId(),
           'Location ID': getLocationId(),
-          'source': 'mia_popup',
+          'source': 'mia-popup',
           'mia_action': miaAction,
+          'cleanup_tag': cleanupTag,
           'value': value,
           'action': actionLabel,
           'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',

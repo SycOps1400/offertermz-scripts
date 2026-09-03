@@ -622,8 +622,9 @@ section('V20: Mia management popup (each circle manages its person)');
   setTimeout(() => {
     check('posts to MIA webhook (not Sam\'s)', fetched && fetched.url.includes('h7r8psndo37fpubl0rasa4olha8p99ss'));
     const b = fetched ? JSON.parse(fetched.opts.body) : {};
-    check('source discriminator present', b.source === 'mia_popup');
+    check('source discriminator present (dash style)', b.source === 'mia-popup');
     check('case A writes Sam Off', b.value === 'Sam Off' && b.mia_action === 'stop_owner_takeover');
+    check('case A cleanup tag', b.cleanup_tag === 'processing mia from on to off');
     check('Mia audit action label', b.action === 'Mia Stop \u2192 Owner takes over');
     check('audit fields ride along', b.logged_in_user === 'Ahmed Afifi' && !!b.timestamp);
   }, 100);
@@ -641,6 +642,7 @@ section('V20: Mia management popup (each circle manages its person)');
   setTimeout(() => {
     const b2 = fetched2 ? JSON.parse(fetched2.opts.body) : {};
     check('case B writes Sam On', b2.value === 'Sam On' && b2.mia_action === 'stop_handed_to_sam');
+    check('case B cleanup tag', b2.cleanup_tag === 'processing mia from on to off and sam on');
   }, 100);
 
   // IDLE Mia → intake iframe popup as always
