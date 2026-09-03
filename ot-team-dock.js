@@ -3,6 +3,20 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 16 *** — HEADING BACK TO THE OFFICE
+ * UPDATES FROM V15:
+ * - Themed working states: turning Sam on from off-duty shows
+ *   "Heading back to the office… be there in a second" while the
+ *   off-duty portrait CROSSFADES into professional Sam (.6s). Off =
+ *   "Clocking Sam out…", standby off-notify = "Updating the plan…".
+ *
+ * *** VERSION 15 *** — TRUE TWINS
+ * UPDATES FROM V14 (product-owner override — consistency beats fitted):
+ * - Sam's popup now matches Mia's popup EXACTLY: min(650px,96vw) x
+ *   min(900px,92vh), and inherits her layout skeleton — portrait at
+ *   Mia scale (clamp 230-330px), content center, CTA anchored to the
+ *   bottom with breathing room. Two members, one silhouette.
+ *
  * *** VERSION 14 *** — THE WARDROBE GETS A VOICE
  * UPDATES FROM V13:
  * - Five off-duty Sams live in the pool (casual, fishing, grilling, golf,
@@ -694,7 +708,9 @@
         'position: fixed; z-index: 99999; top: 50%; left: 50%;' +
         'transform: translate(-50%, -50%);' +
         'width: min(650px, 96vw);' +
-        'max-height: 92vh; overflow-y: auto; overflow-x: hidden;' + /* v12: kill the glow-induced horizontal scrollbar */
+        'height: min(900px, 92vh);' + /* v15: EXACT Mia-popup dimensions — true twins */
+        'display: flex; flex-direction: column;' +
+        'overflow-y: auto; overflow-x: hidden;' +
         'background: linear-gradient(170deg, #1E3A5F 0%, #0d1f38 62%);' +
         'border-radius: 22px;' +
         'box-shadow: 0 20px 60px rgba(0,0,0,0.45);' +
@@ -725,9 +741,14 @@
       '}' +
       '#ot-sam-popup .ot-samp-body {' +
         'padding: 16px 26px 30px;' +
+        'flex: 1 1 auto; display: flex; flex-direction: column;' + /* v15: Mia's skeleton — CTA anchors bottom */
+      '}' +
+      '#ot-sam-popup .ot-samp-cta {' +
+        'margin-top: auto; padding-top: 18px;' +
       '}' +
       '#ot-sam-popup .ot-samp-portrait {' +
-        'position: relative; height: 190px; margin: 4px auto 2px;' +
+        'position: relative; height: clamp(230px, 34vh, 330px);' + /* v15: Mia's portrait scale */
+        'margin: 4px auto 2px; flex-shrink: 0; width: 100%;' +
       '}' +
       '#ot-sam-popup .ot-samp-glow {' +
         'position: absolute; inset: -30% -35%;' +
@@ -1206,7 +1227,7 @@
         '</div>' +
         '<div class="ot-samp-say">' + say + '</div>' +
         '<div class="ot-samp-bubble">' + body + '</div>' +
-        buttons +
+        '<div class="ot-samp-cta">' + buttons + '</div>' +
       '</div>';
 
     card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
@@ -1217,11 +1238,14 @@
         btn.addEventListener('click', function() {
           var act = btn.getAttribute('data-act');
           if (act === 'close') closeSamPopup();
-          else if (act === 'on') setSamStatus(STATUS.SAM_ON, btn);
-          else if (act === 'off') setSamStatus(STATUS.SAM_OFF, btn);
+          else if (act === 'on') setSamStatus(STATUS.SAM_ON, btn,
+            'Heading back to the office\u2026 be there in a second', true);
+          else if (act === 'off') setSamStatus(STATUS.SAM_OFF, btn,
+            'Clocking Sam out\u2026', false);
           else if (act === 'standby-on') renderSamView('standby-on');
           else if (act === 'standby-off') renderSamView('standby-off');
-          else if (act === 'off-notify') setSamStatus(STATUS.MIA_SAM_OFF, btn);
+          else if (act === 'off-notify') setSamStatus(STATUS.MIA_SAM_OFF, btn,
+            'Updating the plan\u2026', false);
         });
       })(btns[i]);
     }
@@ -1268,12 +1292,35 @@
     return 'Off'; // Sam Off, Mia & Sam Off, empty — Sam-wise it's Off
   }
 
-  function setSamStatus(value, btn) {
+  // V16: off-duty Sam fades into professional Sam while he "heads back"
+  function fadePortraitToWork() {
+    var wrap = document.querySelector('#ot-sam-popup .ot-samp-portrait');
+    if (!wrap) return;
+    var oldImg = wrap.querySelector('img');
+    var workFace = samStateFace('on');
+    if (!oldImg || oldImg.src === workFace) return;
+    var fresh = document.createElement('img');
+    fresh.src = workFace;
+    fresh.style.cssText =
+      'position:absolute;inset:0;margin:auto;height:100%;width:auto;max-width:80%;' +
+      'object-fit:contain;opacity:0;transition:opacity .6s ease;';
+    oldImg.style.transition = 'opacity .6s ease';
+    wrap.appendChild(fresh);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        fresh.style.opacity = '1';
+        oldImg.style.opacity = '0';
+      });
+    });
+  }
+
+  function setSamStatus(value, btn, workingLabel, fadeToWork) {
     if (SAM_WEBHOOK.indexOf('REPLACE') === 0) {
       alert('Sam\'s toggle backend isn\'t connected yet (webhook placeholder). No changes were made.');
       return;
     }
-    if (btn) { btn.disabled = true; btn.textContent = 'Working\u2026'; }
+    if (btn) { btn.disabled = true; btn.textContent = workingLabel || 'Working\u2026'; }
+    if (fadeToWork) fadePortraitToWork();
 
     var action = samStateLabel(getAITeamStatus()) + ' to ' + samStateLabel(value);
 

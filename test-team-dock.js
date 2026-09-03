@@ -417,7 +417,11 @@ section('Sam toggle popup (V4)');
   dock4.refresh();
   dock4.openSamPopup();
   // dom4 has no AppUtils — the fallback path must engage
-  dom4.window.document.querySelector('#ot-sam-popup [data-act="on"]').dispatchEvent(new dom4.window.Event('click'));
+  const onBtn4 = dom4.window.document.querySelector('#ot-sam-popup [data-act="on"]');
+  onBtn4.dispatchEvent(new dom4.window.Event('click'));
+  check('v16: themed working label on turn-on', onBtn4.textContent.includes('Heading back to the office'));
+  const portraitImgs4 = dom4.window.document.querySelectorAll('#ot-sam-popup .ot-samp-portrait img');
+  check('v16: crossfade adds the professional portrait', portraitImgs4.length === 2 && portraitImgs4[1].src.includes('6a9771a32ae01952f74ab5f2'));
 
   setTimeout(() => {
     check('POSTs to the real Sam webhook',
