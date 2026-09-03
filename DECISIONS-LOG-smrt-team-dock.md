@@ -2,7 +2,7 @@
 
 Running record of everything agreed in design discussions. Only settled decisions and items explicitly parked for later. Updated as discussions continue.
 
-Last updated: Sep 2, 2026 — D1–D20 locked. Shipped to sandbox: dock v6 (status rings + Sam three-voice popup + live webhook), loader v9, chooser. Sam's Make scenario live. Next: v6 sandbox test, then Mia-side workflow wiring (field-change → Conversation AI + Mia conclusion rewrites). Shipped to sandbox: dock v3, loader v9, whitelabel chooser. Sam toggle build starts after D17/D18 close.
+Last updated: Sep 3, 2026 — D1–D21. Dock v17 (Batch 1) built; Batches 2–4 queued; go-live plan drafting after batches. Shipped to sandbox: dock v6 (status rings + Sam three-voice popup + live webhook), loader v9, chooser. Sam's Make scenario live. Next: v6 sandbox test, then Mia-side workflow wiring (field-change → Conversation AI + Mia conclusion rewrites). Shipped to sandbox: dock v3, loader v9, whitelabel chooser. Sam toggle build starts after D17/D18 close.
 
 ---
 
@@ -112,6 +112,14 @@ Full contract the dock builds on every Mia click:
 - **Autotabs v3:** on load/lead-hop, ensure the All-fields tab is active FIRST (.hr-tabs-tab[data-name="all-fields"], active class hr-tabs-tab--active, throttled click) before opening folders. Loop stops at READY, so users are never yanked back from DND/Actions afterward. (Autotabs v2 en route: fast 400ms window ~10s, then patient 3s retries forever — the old permanent give-up caused the refresh-fixes-it pulsing.)
 - **Dock v10 — cached truth:** the dock remembers the last successfully READ status + lead-chip text per contact; when the panel is away (canary: First Name label absent), it shows the remembered state instead of false-gray rings and a vanishing chip. Keyed by contactId — never the wrong lead. No cache = honest all-dim (no invented truth).
 - Accepted edge: a workflow changing status while the user sits on DND/Actions shows the cached value until return or lead hop. Seconds of staleness beats guaranteed false-off on every tab switch.
+
+### D21 — Test-review notes (Sep 3) and batch plan
+Ahmed's full-tour review produced 9 notes, batched to avoid drift:
+- **Batch 1 (dock v17, shipped):** #1 Sam portrait cut shoulder → Mia's exact portrait treatment (bottom-anchor, 4:5, scale 1.05, drop-shadow). #3 bubble text 16.5px/1.62. #4 themed CTAs gain subline "Come connect with {lead}". #9 standby-off confirmation = amber alert bubble + ⚠ (importance without panic).
+- **Batch 2 (pending):** #2 pill placement for the new TWO-COLUMN GHL layout (tabs now sit under the pill) — live-tunable offsets, then hardcode.
+- **Batch 3 (pending):** #5 clock-out reverse fade (suit → random casual, slight delay). #6 ONE standardized popup transition engine (Mia's scale-from-circle) shared by Sam/Mia and future Ruby/Tate — Ahmed is confident Ruby & Tate will be independent Mia-style pages.
+- **Batch 4 (pending, needs DOM snippet):** #7 AI Team Status dropdown REMOVED from Contact folder; lives ONLY in the top Details section (locked/read-only by nature, always visible on every tab — user-tamper-proof and unmount-proof). Reader must switch to the Details-section element. NOTE: this makes the status read always-mounted, simplifying/deprecating part of D20's cache for status (chip cache still needed).
+- **Ahmed's side:** #8 off-notify path must also update {{contact.mia_action_on_lead_response}} → "Stop following up & text me. I'll take it from here" (Make/workflow action).
 
 ---
 

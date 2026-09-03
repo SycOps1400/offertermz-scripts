@@ -3,6 +3,25 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 18 *** — BATCH 4: THE DETAILS-SECTION READER
+ * UPDATES FROM V17:
+ * - AI Team Status is now read PRIMARILY from the top Details-section
+ *   mirror (locked, uneditable, rendered on every tab/action) — the
+ *   status read is unmount-proof and tamper-proof by construction.
+ *   The dropdown itself lives ONLY in the Details config; the Contact-
+ *   folder copy was removed by design.
+ * - Old Contact-folder widget lookups kept as harmless fallbacks.
+ * - '--' (GHL's empty display) treated as empty => everything off (D18).
+ *
+ * *** VERSION 17 *** — TEST-NOTES BATCH 1 (visual & copy polish)
+ * UPDATES FROM V16 (Ahmed's test review):
+ * - #1 Portrait: Mia's exact treatment (bottom-anchored, 4:5 aspect,
+ *   scale 1.05 bleed, drop-shadow) — no more amputated shoulder edges.
+ * - #3 Bubble text: 16.5px / 1.62 — easier read, less dead space.
+ * - #4 Themed CTAs gain a clarity subline: "Come connect with {lead}".
+ * - #9 Standby-off confirmation styled as an amber ALERT bubble with a
+ *   warning glyph — importance without panic.
+ *
  * *** VERSION 16 *** — HEADING BACK TO THE OFFICE
  * UPDATES FROM V15:
  * - Themed working states: turning Sam on from off-duty shows
@@ -364,6 +383,29 @@
   }
 
   function getAITeamStatusRaw() {
+    // V18 (Batch 4): PRIMARY source — the Details-section mirror.
+    // Structure: <div class="space-y-1"><p.hr-text>AI Team Status</p>
+    //            <p.hr-text><span>VALUE</span></p></div>
+    // It's locked (user-tamper-proof) and rendered on EVERY tab —
+    // the status read is now unmount-proof by construction.
+    var detailLabels = document.querySelectorAll('p.hr-text');
+    for (var d = 0; d < detailLabels.length; d++) {
+      if (detailLabels[d].textContent.trim() === STATUS_FIELD_LABEL) {
+        var row = detailLabels[d].closest('.space-y-1');
+        if (row) {
+          var ps = row.querySelectorAll('p.hr-text');
+          for (var v = 0; v < ps.length; v++) {
+            var txt = (ps[v].textContent || '').trim();
+            if (txt && txt !== STATUS_FIELD_LABEL && txt !== '--') {
+              return txt;
+            }
+          }
+        }
+      }
+    }
+
+    // Legacy fallbacks: the old Contact-folder widget (field removed from
+    // that folder in production design, kept here at zero cost).
     var labels = document.querySelectorAll('span.hr-form-item-label__text');
     for (var i = 0; i < labels.length; i++) {
       if (labels[i].textContent.trim() === STATUS_FIELD_LABEL) {
@@ -747,7 +789,7 @@
         'margin-top: auto; padding-top: 18px;' +
       '}' +
       '#ot-sam-popup .ot-samp-portrait {' +
-        'position: relative; height: clamp(230px, 34vh, 330px);' + /* v15: Mia's portrait scale */
+        'position: relative; height: clamp(230px, 34vh, 340px);' + /* v17: Mia's exact wrap */
         'margin: 4px auto 2px; flex-shrink: 0; width: 100%;' +
       '}' +
       '#ot-sam-popup .ot-samp-glow {' +
@@ -755,9 +797,12 @@
         'background: radial-gradient(50% 55% at 50% 62%, rgba(232,90,51,.30), transparent 70%);' +
         'pointer-events: none;' +
       '}' +
-      '#ot-sam-popup .ot-samp-portrait img {' +
-        'position: relative; height: 100%; width: auto; max-width: 80%;' +
-        'object-fit: contain; display: block; margin: 0 auto;' +
+      '#ot-sam-popup .ot-samp-portrait img {' + /* v17: Mia's .portraits treatment — bottom-anchored, 4:5, gentle bleed */
+        'position: absolute; left: 50%; bottom: 0;' +
+        'height: 100%; aspect-ratio: 4 / 5; max-width: 100%;' +
+        'transform: translateX(-50%) scale(1.05);' +
+        'object-fit: contain; object-position: center bottom;' +
+        'filter: drop-shadow(0 24px 50px rgba(0,0,0,.45));' +
       '}' +
       '#ot-sam-popup .ot-samp-status {' +
         'display: inline-flex; align-items: center; gap: 9px;' +
@@ -779,9 +824,18 @@
         'border-radius: 22px;' +
         'padding: 18px 22px;' +
         'box-shadow: 0 24px 70px rgba(0,0,0,.35);' +
-        'color: rgba(255,255,255,.85);' +
-        'font-size: 15px; font-weight: 500; line-height: 1.55;' +
+        'color: rgba(255,255,255,.88);' +
+        'font-size: 16.5px; font-weight: 500; line-height: 1.62;' + /* v17: easier read, less dead space */
         'text-align: left; margin-bottom: 18px;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-bubble--alert {' + /* v17: importance without panic */
+        'background: rgba(245,158,11,.10);' +
+        'border-color: rgba(245,158,11,.55);' +
+        'color: #fde68a;' +
+      '}' +
+      '#ot-sam-popup .ot-sam-btn-sub {' + /* v17: CTA clarity subline */
+        'display: block; font-size: 13px; font-weight: 600;' +
+        'opacity: .88; margin-top: 4px; letter-spacing: .1px;' +
       '}' +
       '#ot-sam-popup .ot-sam-warn {' +
         'color: #f9b47a; font-size: 13px; line-height: 1.5; margin: -8px 4px 14px; text-align: left;' +
@@ -1191,7 +1245,10 @@
         var flavor = (pick && pick.flavor) ? (pick.flavor + ' ') : '';
         body = flavor + 'You\u2019re the person in charge of this lead right now. Turn him on and he\u2019ll engage the moment ' + lead + ' texts \u2014 working to book you a call.';
         var ctaLabel = (pick && pick.cta) || 'Turn Sam On';
-        buttons = '<button type="button" class="ot-sam-btn" data-act="on">' + ctaLabel + '</button>';
+        var ctaSub = (lead !== 'the lead') ? ('Come connect with ' + lead) : 'Come work this lead';
+        buttons = '<button type="button" class="ot-sam-btn" data-act="on">' + ctaLabel +
+          (pick ? '<span class="ot-sam-btn-sub">' + ctaSub + '</span>' : '') +
+          '</button>';
       }
     } else if (view === 'standby-on') {
       face = samStateFace('standby'); dotColor = '#f59e0b';
@@ -1206,6 +1263,9 @@
         '<button type="button" class="ot-sam-btn" data-act="close">Keep Sam on Standby</button>' +
         '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="off-notify">Turn Sam Off \u2014 just notify me when ' + lead + ' responds</button>';
     }
+
+    var bubbleClass = 'ot-samp-bubble' + (view === 'standby-off' ? ' ot-samp-bubble--alert' : '');
+    if (view === 'standby-off') body = '\u26A0\uFE0F ' + body;
 
     card.innerHTML =
       '<div class="ot-samp-head">' +
@@ -1226,7 +1286,7 @@
           '<strong style="color:#fff;">Sam</strong>&nbsp;Acquisitionist' +
         '</div>' +
         '<div class="ot-samp-say">' + say + '</div>' +
-        '<div class="ot-samp-bubble">' + body + '</div>' +
+        '<div class="' + bubbleClass + '">' + body + '</div>' +
         '<div class="ot-samp-cta">' + buttons + '</div>' +
       '</div>';
 
@@ -1302,8 +1362,9 @@
     var fresh = document.createElement('img');
     fresh.src = workFace;
     fresh.style.cssText =
-      'position:absolute;inset:0;margin:auto;height:100%;width:auto;max-width:80%;' +
-      'object-fit:contain;opacity:0;transition:opacity .6s ease;';
+      'position:absolute;left:50%;bottom:0;height:100%;aspect-ratio:4/5;max-width:100%;' +
+      'transform:translateX(-50%) scale(1.05);object-fit:contain;object-position:center bottom;' +
+      'filter:drop-shadow(0 24px 50px rgba(0,0,0,.45));opacity:0;transition:opacity .6s ease;';
     oldImg.style.transition = 'opacity .6s ease';
     wrap.appendChild(fresh);
     requestAnimationFrame(function() {

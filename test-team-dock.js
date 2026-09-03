@@ -40,6 +40,15 @@ function makeContactDOM(opts) {
       '</div>';
   }
 
+  // V18: the Details-section mirror (locked, always visible) — primary source
+  const detailsHTML = (opts.aiStatusDetails === undefined) ? '' :
+    '<div class="space-y-1">' +
+      '<div class="flex items-center gap-1">' +
+        '<p class="hr-text hr-text-sm hr-text-medium text-gray-500">AI Team Status</p>' +
+      '</div>' +
+      '<p class="hr-text hr-text-md hr-text-regular text-gray-900"><span>' + opts.aiStatusDetails + '</span></p>' +
+    '</div>';
+
   // V4: AI Team Status dropdown — GHL renders the value as TEXT in the
   // overlay wrapper; the input is empty (mirrors the live DOM snippet).
   const statusHTML = (opts.aiStatus === undefined) ? '' :
@@ -67,7 +76,7 @@ function makeContactDOM(opts) {
   const dom = new JSDOM(
     '<html><head></head><body>' +
       '<div class="hl_header--controls"></div>' +
-      sidebarHTML + ownerHTML + fieldHTML + statusHTML +
+      sidebarHTML + ownerHTML + fieldHTML + statusHTML + detailsHTML +
     '</body></html>',
     { url: url, runScripts: 'outside-only', pretendToBeVisual: true }
   );
@@ -279,7 +288,33 @@ section('Mia popup');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-section('AI Team Status reader (V4)');
+section('V18: Details-section reader (primary source)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  // Details mirror ONLY — no Contact-folder widget at all (the real world now)
+  const dom = makeContactDOM({ aiStatusDetails: 'Mia Following Up &amp; Sam On Standby' });
+  const dock = loadDock(dom);
+  check('reads from Details mirror (entity-decoded &)', dock.getAITeamStatus() === 'Mia Following Up & Sam On Standby');
+  dock.refresh();
+  check('rings driven from Details: Sam standby', dom.window.document.getElementById('ot-dock-sam').className.includes('ot-state-standby'));
+  check('rings driven from Details: Mia on', dom.window.document.getElementById('ot-dock-mia').className.includes('ot-state-on'));
+
+  const domEmpty = makeContactDOM({ aiStatusDetails: '--' });
+  check('GHL empty display "--" => empty (all off)', loadDock(domEmpty).getAITeamStatus() === '');
+
+  // When BOTH exist, Details wins (primary)
+  const domBoth = makeContactDOM({ aiStatusDetails: 'Sam Off', aiStatus: 'Sam On' });
+  check('Details mirror outranks legacy widget', loadDock(domBoth).getAITeamStatus() === 'Sam Off');
+
+  // Unmount-proof: remove ALL field containers, Details survives (it lives outside them)
+  const domUn = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  const dockUn = loadDock(domUn);
+  domUn.window.document.querySelectorAll('.hr-form-item__container').forEach(e => e.remove());
+  check('status still readable with folders unmounted (no cache needed)', dockUn.getAITeamStatus() === 'Sam On');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('AI Team Status reader (V4 legacy fallback)');
 // ═══════════════════════════════════════════════════════════════════════
 {
   const vals = [
@@ -386,6 +421,7 @@ section('Sam toggle popup (V4)');
   const p2 = dom2.window.document.getElementById('ot-sam-popup');
   p2.querySelector('[data-act="standby-off"]').dispatchEvent(new dom2.window.Event('click'));
   check('standby-off: the Mia question shown', p2.textContent.includes('who takes care of the lead'));
+  check('v17: standby-off wears the alert bubble', !!p2.querySelector('.ot-samp-bubble--alert') && p2.textContent.includes('\u26A0'));
   check('standby-off: fired nothing yet', fetched2 === null);
   check('standby-off: Keep Sam on Standby offered', p2.querySelector('[data-act="close"]').textContent.includes('Keep Sam on Standby'));
   p2.querySelector('[data-act="off-notify"]').dispatchEvent(new dom2.window.Event('click'));
@@ -466,7 +502,8 @@ section('V14: themed off-duty wardrobe');
   check('flavor + functional sentence both present',
     doc.getElementById('ot-sam-popup').textContent.includes('Errands, sunshine') &&
     doc.getElementById('ot-sam-popup').textContent.includes('the moment Sarah texts'));
-  check('themed CTA label', doc.querySelector('[data-act="on"]').textContent === 'Call Sam back to the office');
+  check('themed CTA label', doc.querySelector('[data-act="on"]').textContent.includes('Call Sam back to the office'));
+  check('v17: CTA clarity subline', doc.querySelector('.ot-sam-btn-sub').textContent === 'Come connect with Sarah');
   dock.closeSamPopup();
 
   // Re-roll on next open: force index 1 (fishing)
