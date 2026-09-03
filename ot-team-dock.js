@@ -3,6 +3,14 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 24 *** — ONE DIALECT: locationId EVERYWHERE
+ * UPDATES FROM V23:
+ * - The location key is now camelCase `locationId` in BOTH Sam's toggle
+ *   payload and Mia's stop payload — matching the Mia page, contactId's
+ *   style, and GHL API conventions. The "Location ID" (space) key is
+ *   retired. Make scenarios must map {{2.locationId}} accordingly
+ *   (Sam's Airtable search is the one needing the edit).
+ *
  * *** VERSION 23 *** — MIA STOP PAYLOAD v2 (source + cleanup_tag)
  * UPDATES FROM V22:
  * - source renamed 'mia-popup' (dash), matching the page's 'mia-page' style.
@@ -1669,7 +1677,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           'contactId': getContactId(),
-          'Location ID': getLocationId(),
+          'locationId': getLocationId(),
           'value': value,
           'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
           'timestamp': new Date().toISOString(),
@@ -1808,7 +1816,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           'contactId': getContactId(),
-          'Location ID': getLocationId(),
+          'locationId': getLocationId(),
           'source': 'mia-popup',
           'mia_action': miaAction,
           'cleanup_tag': cleanupTag,

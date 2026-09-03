@@ -466,9 +466,10 @@ section('Sam toggle popup (V4)');
     check('POSTs to the real Sam webhook',
       fetched && fetched.url === 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27');
     const body3 = fetched ? JSON.parse(fetched.opts.body) : {};
-    check('payload speaks the Mia dialect: contactId + "Location ID" + value',
+    check('payload speaks ONE dialect: contactId + locationId + value',
       body3['contactId'] === 'dSoiEJ4n26EzpxLBKkmC' &&
-      body3['Location ID'] === 'gE9qbjW9QSgOwI1Api5h' &&
+      body3.locationId === 'gE9qbjW9QSgOwI1Api5h' &&
+      body3['Location ID'] === undefined &&
       body3.value === 'Sam Off');
     check('audit: assigned_user carried', body3.assigned_user === 'Ahmed');
     check('audit: ISO timestamp', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body3.timestamp));
@@ -623,6 +624,7 @@ section('V20: Mia management popup (each circle manages its person)');
     check('posts to MIA webhook (not Sam\'s)', fetched && fetched.url.includes('h7r8psndo37fpubl0rasa4olha8p99ss'));
     const b = fetched ? JSON.parse(fetched.opts.body) : {};
     check('source discriminator present (dash style)', b.source === 'mia-popup');
+    check('v24: locationId camelCase (space key retired)', b.locationId === 'gE9qbjW9QSgOwI1Api5h' && b['Location ID'] === undefined);
     check('case A writes Sam Off', b.value === 'Sam Off' && b.mia_action === 'stop_owner_takeover');
     check('case A cleanup tag', b.cleanup_tag === 'processing mia from on to off');
     check('Mia audit action label', b.action === 'Mia Stop \u2192 Owner takes over');
