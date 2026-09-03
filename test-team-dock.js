@@ -422,6 +422,9 @@ section('Sam toggle popup (V4)');
   p2.querySelector('[data-act="standby-off"]').dispatchEvent(new dom2.window.Event('click'));
   check('standby-off: the Mia question shown', p2.textContent.includes('who takes care of the lead'));
   check('v17: standby-off wears the alert bubble', !!p2.querySelector('.ot-samp-bubble--alert') && p2.textContent.includes('\u26A0'));
+  check('v19: headline lives inside the bubble', !!p2.querySelector('.ot-samp-bubble--alert .ot-samp-say'));
+  check('v19: pointer notch present', !!p2.querySelector('.ot-samp-notch'));
+  check('v19: status row carries company', p2.querySelector('.ot-samp-status').textContent.includes('Desert Lily Homes LLC'));
   check('standby-off: fired nothing yet', fetched2 === null);
   check('standby-off: Keep Sam on Standby offered', p2.querySelector('[data-act="close"]').textContent.includes('Keep Sam on Standby'));
   p2.querySelector('[data-act="off-notify"]').dispatchEvent(new dom2.window.Event('click'));
@@ -514,6 +517,26 @@ section('V14: themed off-duty wardrobe');
   check('fishing CTA', doc.querySelector('[data-act="on"]').textContent.includes('Put the fish down'));
   dock.closeSamPopup();
 
+  // V19: Mia-aware restore — from "Mia Following Up & Sam Off"
+  const domR = makeContactDOM({ aiStatusDetails: 'Mia Following Up &amp; Sam Off' });
+  let fetchedR = null;
+  domR.window.fetch = (url, opts) => { fetchedR = { url, opts }; return Promise.resolve({ ok: true }); };
+  domR.window.Math.random = () => 0;
+  const dockR = loadDock(domR);
+  dockR.refresh();
+  dockR.openSamPopup();
+  const pR = domR.window.document.getElementById('ot-sam-popup');
+  check('v19: NO plain turn-on offered in Mia&SamOff state', !pR.querySelector('[data-act="on"]'));
+  check('v19: standby-restore CTA present', !!pR.querySelector('[data-act="standby-restore"]'));
+  check('v19: body explains Mia continues + handoff', pR.textContent.includes('Mia\u2019s still following up') && pR.textContent.includes('steps aside'));
+  check('v19: restore subline', pR.textContent.includes('take over the moment Sarah responds'));
+  pR.querySelector('[data-act="standby-restore"]').dispatchEvent(new domR.window.Event('click'));
+  setTimeout(() => {
+    const bodyR = fetchedR ? JSON.parse(fetchedR.opts.body) : {};
+    check('v19: restore writes "Mia Following Up & Sam On Standby"', bodyR.value === 'Mia Following Up & Sam On Standby');
+    check('v19: audit action "Off to Standby"', bodyR.action === 'Off to Standby');
+  }, 100);
+
   const srcFile = fs.readFileSync('./ot-team-dock.js', 'utf8');
   check('all five outfits in the pool', ['51753','5187b','01fbc','1e703','1e81c'].every(s => srcFile.includes(s)));
   check('CTA still performs Turn Sam On (data-act unchanged)', srcFile.includes("data-act=\"on\">' + ctaLabel"));
@@ -570,6 +593,138 @@ section('Autotabs v3 — static analysis');
   check('panel click throttled', at.includes('lastPanelClickAt'));
   check('v2 slow mode survives', at.includes('SLOW_CHECK_EVERY_MS') && at.includes('slowMode = true'));
   check('panel switch precedes folder work (step 0)', at.indexOf('data-name="all-fields"') < at.indexOf('// 1) Open any tab'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V20: Mia management popup (each circle manages its person)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  // ACTIVE Mia (value 4) → management popup, not the intake iframe
+  const dom = makeContactDOM({ aiStatusDetails: 'Mia Following Up &amp; Sam Off' });
+  let fetched = null;
+  dom.window.fetch = (url, opts) => { fetched = { url, opts }; return Promise.resolve({ ok: true }); };
+  dom.window.AppUtils = { Utilities: { getCurrentUser: () => Promise.resolve({ id: 'U1', name: 'Ahmed Afifi', email: 'a@z.ai' }) } };
+  const dock = loadDock(dom);
+  dock.refresh();
+  const doc = dom.window.document;
+
+  // Simulate a click through the real router (onMiaClick is internal — go via the dock button)
+  doc.getElementById('ot-dock-mia').dispatchEvent(new dom.window.Event('click'));
+  const popup = doc.getElementById('ot-sam-popup');
+  check('active Mia click → management popup (no iframe)', !!popup && !popup.querySelector('iframe'));
+  check('popup is Mia-flavored', popup.getAttribute('data-member') === 'mia' && popup.textContent.includes('Mia\u2019s on it'));
+  check('names the phone-call scenario', popup.textContent.includes('just called you'));
+  check('three actions present', !!popup.querySelector('[data-act="mia-stop-own"]') && !!popup.querySelector('[data-act="mia-stop-sam"]') && !!popup.querySelector('[data-act="close"]'));
+  check('escape hatch: let her cook', popup.querySelector('[data-act="close"]').textContent.includes('let her cook'));
+
+  // Case A: owner takeover → MIA webhook, value Sam Off
+  popup.querySelector('[data-act="mia-stop-own"]').dispatchEvent(new dom.window.Event('click'));
+  setTimeout(() => {
+    check('posts to MIA webhook (not Sam\'s)', fetched && fetched.url.includes('h7r8psndo37fpubl0rasa4olha8p99ss'));
+    const b = fetched ? JSON.parse(fetched.opts.body) : {};
+    check('source discriminator present', b.source === 'mia_popup');
+    check('case A writes Sam Off', b.value === 'Sam Off' && b.mia_action === 'stop_owner_takeover');
+    check('Mia audit action label', b.action === 'Mia Stop \u2192 Owner takes over');
+    check('audit fields ride along', b.logged_in_user === 'Ahmed Afifi' && !!b.timestamp);
+  }, 100);
+
+  // Case B on a standby-state lead (value 3 also routes to management)
+  const dom2 = makeContactDOM({ aiStatusDetails: 'Mia Following Up &amp; Sam On Standby' });
+  let fetched2 = null;
+  dom2.window.fetch = (url, opts) => { fetched2 = { url, opts }; return Promise.resolve({ ok: true }); };
+  const dock2 = loadDock(dom2);
+  dock2.refresh();
+  dom2.window.document.getElementById('ot-dock-mia').dispatchEvent(new dom2.window.Event('click'));
+  const popup2 = dom2.window.document.getElementById('ot-sam-popup');
+  check('standby state also routes Mia to management', !!popup2 && popup2.getAttribute('data-member') === 'mia');
+  popup2.querySelector('[data-act="mia-stop-sam"]').dispatchEvent(new dom2.window.Event('click'));
+  setTimeout(() => {
+    const b2 = fetched2 ? JSON.parse(fetched2.opts.body) : {};
+    check('case B writes Sam On', b2.value === 'Sam On' && b2.mia_action === 'stop_handed_to_sam');
+  }, 100);
+
+  // IDLE Mia → intake iframe popup as always
+  const dom3 = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  const dock3 = loadDock(dom3);
+  dock3.refresh();
+  dom3.window.document.getElementById('ot-dock-mia').dispatchEvent(new dom3.window.Event('click'));
+  check('idle Mia click → intake popup with iframe', !!dom3.window.document.querySelector('#ot-mia-popup iframe'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V21: live-tunable placement');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  const r = dock.nudge(-40, -28);
+  check('nudge sets and returns offsets', r.x === -40 && r.y === -28);
+  const el = dom.window.document.getElementById('ot-team-dock');
+  check('offset applied to marginLeft', el && el.style.marginLeft === '-40px');
+  const r2 = dock.nudge(undefined, -10);
+  check('partial nudge keeps other axis', r2.x === -40 && r2.y === -10);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V22: free-range pill (drag, resize, remember, reset)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  const doc = dom.window.document;
+  const el = doc.getElementById('ot-team-dock');
+  const W = dom.window;
+
+  const mouse = (type, x, y, target) => {
+    const ev = new W.MouseEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true });
+    (target || doc).dispatchEvent(ev);
+  };
+
+  // Drag: down on dock bg, move past threshold, up → custom position saved
+  el.getBoundingClientRect = () => ({ left: 400, top: 50, width: 300, height: 76, right: 700, bottom: 126 });
+  mouse('mousedown', 500, 60, el);
+  mouse('mousemove', 560, 120); // +60, +60
+  mouse('mouseup', 560, 120);
+  check('drag moves the pill (left set in px)', el.style.left === '460px');
+  check('drag moves the pill (top set in px)', el.style.top === '110px');
+  const saved = JSON.parse(W.localStorage.getItem('ot_dock_prefs_v1'));
+  check('position persisted to localStorage', saved && saved.custom === true && saved.x === 460 && saved.y === 110);
+
+  // refresh() must respect the custom spot (not re-anchor)
+  dock.refresh();
+  check('refresh respects the custom spot', el.style.left === '460px' && el.style.top === '110px');
+
+  // Threshold: a 2px wiggle is a click, not a drag
+  W.localStorage.removeItem('ot_dock_prefs_v1');
+  dock.resetDock();
+  mouse('mousedown', 500, 60, el);
+  mouse('mousemove', 502, 61);
+  mouse('mouseup', 502, 61);
+  const saved2 = W.localStorage.getItem('ot_dock_prefs_v1');
+  check('sub-threshold wiggle stays anchored', !JSON.parse(saved2).custom);
+
+  // Resize buttons: + then clamp at max
+  const plus = el.querySelector('[data-size="+"]');
+  plus.dispatchEvent(new W.MouseEvent('click', { bubbles: true }));
+  check('one + step → scale 1.05', el.style.transform.includes('scale(1.05)'));
+  for (let i = 0; i < 20; i++) plus.dispatchEvent(new W.MouseEvent('click', { bubbles: true }));
+  check('scale clamps at 1.3', el.style.transform.includes('scale(1.3)'));
+  const minus = el.querySelector('[data-size="-"]');
+  for (let i = 0; i < 30; i++) minus.dispatchEvent(new W.MouseEvent('click', { bubbles: true }));
+  check('scale clamps at 0.75', el.style.transform.includes('scale(0.75)'));
+
+  // Double-click reset → home anchor, scale 1
+  el.dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+  check('dblclick resets scale + anchor', el.style.transform.includes('scale(1)') && el.style.left === '50%');
+
+  // Drag must NOT start from a member circle
+  const sam = doc.getElementById('ot-dock-sam');
+  mouse('mousedown', 500, 60, sam);
+  mouse('mousemove', 580, 140);
+  mouse('mouseup', 580, 140);
+  check('drag from a circle is ignored', el.style.left === '50%');
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -3,6 +3,43 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 22 *** — THE FREE-RANGE PILL (drag, resize, remember)
+ * UPDATES FROM V21:
+ * - Drag anywhere on the navy background to place the pill (4px threshold
+ *   keeps clicks clicks); clamped on-screen.
+ * - Resize: hover +/- buttons or Ctrl/Cmd+scroll, 75%–130%.
+ * - Position + scale persist per browser (localStorage); double-click the
+ *   navy (or OT_TeamDock.resetDock()) snaps home to the default anchor.
+ * - GHL has no say: the pill is our fixed-position element.
+ *
+ * *** VERSION 21 *** — BATCH 2: LIVE-TUNABLE PLACEMENT
+ * UPDATES FROM V20:
+ * - DOCK_OFFSET_X / DOCK_OFFSET_Y placement constants + OT_TeamDock.nudge(x,y)
+ *   console tool: position the pill by eye in the two-column layout, read
+ *   the winning numbers from the console, hardcode them next version.
+ *
+ * *** VERSION 20 *** — MIA MANAGES HERSELF (each circle manages its person)
+ * UPDATES FROM V19:
+ * - Clicking Mia while she's ACTIVE (values 3/4) opens her MANAGEMENT
+ *   popup (Sam's shell, her voice): "Mia's on it." Two stops — owner
+ *   takeover (writes Sam Off) or hand to Sam (writes Sam On) — plus
+ *   "Never mind — let her cook." Idle Mia still opens the intake page.
+ * - Her stops post to MIA_WEBHOOK (her own scenario + Usage Log), with
+ *   source:"mia_popup" + mia_action so the scenario router can branch
+ *   intake vs management. Full audit fields included.
+ * - Case C (Sam standby restore) remains on SAM's popup (v19).
+ *
+ * *** VERSION 19 *** — THE MIA-AWARE RESTORE + CONGRUENCE PASS
+ * UPDATES FROM V18 (v18 test findings):
+ * - STATE FIX: from "Mia Following Up & Sam Off" the popup no longer
+ *   offers plain Turn Sam On (which destroyed Mia's followup state).
+ *   Its single CTA is a STANDBY RESTORE — writes "Mia Following Up &
+ *   Sam On Standby" (audit: "Off to Standby"); Mia keeps following up,
+ *   handoff re-arms. Automation A2 (Ahmed) updates
+ *   mia_action_on_lead_response = "Give it to Sam AI so he books me a call".
+ * - CONGRUENCE: headline now lives INSIDE the frosted bubble behind
+ *   Mia's pointer notch; status row gains "for {company}".
+ *
  * *** VERSION 18 *** — BATCH 4: THE DETAILS-SECTION READER
  * UPDATES FROM V17:
  * - AI Team Status is now read PRIMARILY from the top Details-section
@@ -220,6 +257,11 @@
   // token lookup by location_id -> GHL PUT of the AI Team Status field).
   // MUST be replaced with the real webhook URL before Sam's toggle works.
   var SAM_WEBHOOK = 'https://hook.us1.make.com/0p6jeo2v4praotvltnzpmodkfwvmba27';
+
+  // V20: Mia's OWN scenario — different payload contract, different Usage
+  // Log. Her management popup posts here with source:"mia_popup" so the
+  // scenario's router can branch intake vs management.
+  var MIA_WEBHOOK = 'https://hook.us1.make.com/h7r8psndo37fpubl0rasa4olha8p99ss';
 
   // V4: the exact customer-facing dropdown values (D17 — character-for-
   // character; the reader whitelists these and treats anything else as
@@ -542,6 +584,7 @@
         'position: fixed;' +
         'left: 50%;' +
         'transform: translateX(-50%);' +
+        'cursor: grab;' + /* v22: the pill is draggable */
         'z-index: 999;' +
         'display: none;' +
         'align-items: center;' +
@@ -741,6 +784,21 @@
         'filter: grayscale(1); opacity: 0.55;' +
       '}' +
 
+      /* ── V22: size controls (hover-reveal) ── */
+      '#' + DOCK_ID + ' .ot-dock-size {' +
+        'display: flex; flex-direction: column; gap: 3px;' +
+        'opacity: 0; transition: opacity .25s;' +
+        'margin-left: -6px;' +
+      '}' +
+      '#' + DOCK_ID + ':hover .ot-dock-size { opacity: 1; }' +
+      '#' + DOCK_ID + ' .ot-dock-size-btn {' +
+        'width: 18px; height: 18px; border-radius: 50%;' +
+        'border: none; cursor: pointer; padding: 0;' +
+        'background: rgba(255,255,255,0.14); color: #ffffff;' +
+        'font-size: 12px; line-height: 1; font-weight: 700;' +
+      '}' +
+      '#' + DOCK_ID + ' .ot-dock-size-btn:hover { background: rgba(255,255,255,0.28); }' +
+
       /* ── V11: Sam popup — Mia's design language ── */
       '#ot-sam-overlay {' +
         'position: fixed; inset: 0; z-index: 99998;' +
@@ -812,11 +870,22 @@
       '#ot-sam-popup .ot-samp-dot {' +
         'width: 9px; height: 9px; border-radius: 50%; display: inline-block;' +
       '}' +
-      '#ot-sam-popup .ot-samp-say {' +
+      '#ot-sam-popup .ot-samp-say {' + /* v19: lives INSIDE the bubble, like Mia */
         'font-family: "Playfair Display", Georgia, serif;' +
-        'font-size: clamp(24px, 5vw, 30px); font-weight: 700;' +
-        'line-height: 1.18; letter-spacing: -0.012em; color: #ffffff;' +
-        'margin: 0 6px 14px;' +
+        'font-size: clamp(22px, 4.6vw, 28px); font-weight: 700;' +
+        'line-height: 1.2; letter-spacing: -0.012em; color: #ffffff;' +
+        'margin: 0 0 10px; text-align: left;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-notch {' + /* v19: Mia's pointer diamond */
+        'width: 16px; height: 16px; margin: 0 auto -9px;' +
+        'transform: rotate(45deg);' +
+        'background: rgba(255,255,255,.07);' +
+        'border: 1px solid rgba(255,255,255,.22);' +
+        'border-bottom: none; border-right: none;' +
+        'position: relative; z-index: 1;' +
+      '}' +
+      '#ot-sam-popup .ot-samp-body-text {' +
+        'color: rgba(255,255,255,.88); font-size: 16.5px; font-weight: 500; line-height: 1.62;' +
       '}' +
       '#ot-sam-popup .ot-samp-bubble {' +
         'background: rgba(255,255,255,.07);' +
@@ -941,6 +1010,7 @@
 
     dock = document.createElement('div');
     dock.id = DOCK_ID;
+    dock.title = 'Drag to move \u00b7 hover for size \u00b7 double-click to reset';
 
     // Lead chip
     var lead = document.createElement('div');
@@ -1001,6 +1071,7 @@
       onClick: toolHandler('otOpenTheCloser', 'The Closer')
     }));
 
+    wireDockInteractions(dock); // V22
     document.body.appendChild(dock);
     log('✅ TeamDock: dock built');
     return dock;
@@ -1027,13 +1098,188 @@
   // strip used to float). Re-measured every refresh.
   // ═══════════════════════════════════════════════════════════════════════
 
+  // V21 (Batch 2): DEFAULT anchor offsets for the two-column GHL layout.
+  // Tune LIVE via OT_TeamDock.nudge(x, y); winners get hardcoded here.
+  var DOCK_OFFSET_X = 0;   // px; negative = left
+  var DOCK_OFFSET_Y = 0;   // px; negative = up
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // V22 — THE FREE-RANGE PILL
+  // Drag anywhere on the navy background to place it; hover +/- (or
+  // Ctrl/Cmd+scroll) to resize 75%–130%; double-click background to snap
+  // home. Position + size persist per browser via localStorage.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  var DOCK_PREFS_KEY = 'ot_dock_prefs_v1';
+  var SCALE_MIN = 0.75, SCALE_MAX = 1.3, SCALE_STEP = 0.05;
+  var dockPrefs = loadDockPrefs();
+  var dragState = null; // {startX, startY, origLeft, origTop, moved}
+
+  function loadDockPrefs() {
+    try {
+      var raw = localStorage.getItem(DOCK_PREFS_KEY);
+      if (raw) {
+        var p = JSON.parse(raw);
+        if (p && typeof p === 'object') {
+          return { custom: !!p.custom, x: p.x || 0, y: p.y || 0,
+                   scale: Math.min(SCALE_MAX, Math.max(SCALE_MIN, p.scale || 1)) };
+        }
+      }
+    } catch (e) { /* storage blocked — session-only prefs */ }
+    return { custom: false, x: 0, y: 0, scale: 1 };
+  }
+
+  function saveDockPrefs() {
+    try { localStorage.setItem(DOCK_PREFS_KEY, JSON.stringify(dockPrefs)); }
+    catch (e) { /* fine — lives for the session */ }
+  }
+
+  function clampToViewport(x, y, dock) {
+    var w = (dock.offsetWidth || 300) * dockPrefs.scale;
+    var h = (dock.offsetHeight || 76) * dockPrefs.scale;
+    var vw = window.innerWidth || 1200, vh = window.innerHeight || 800;
+    return {
+      x: Math.min(Math.max(x, 8), Math.max(8, vw - w - 8)),
+      y: Math.min(Math.max(y, 4), Math.max(4, vh - h - 8))
+    };
+  }
+
+  function applyDockTransform(dock) {
+    if (dockPrefs.custom) {
+      dock.style.transform = 'scale(' + dockPrefs.scale + ')';
+      dock.style.transformOrigin = 'top left';
+    } else {
+      dock.style.transform = 'translateX(-50%) scale(' + dockPrefs.scale + ')';
+      dock.style.transformOrigin = 'top center';
+    }
+  }
+
   function positionDock(dock) {
+    if (dragState && dragState.moved) return true; // mid-drag: hands off
+
+    if (dockPrefs.custom) {
+      var c = clampToViewport(dockPrefs.x, dockPrefs.y, dock);
+      dock.style.left = c.x + 'px';
+      dock.style.top = c.y + 'px';
+      dock.style.marginLeft = '0px';
+      applyDockTransform(dock);
+      return true;
+    }
+
     var header = document.querySelector('.hl_header--controls');
     if (!header) return false;
     var rect = header.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return false;
-    dock.style.top = (rect.bottom + 6) + 'px';
+    dock.style.left = '50%';
+    dock.style.top = (rect.bottom + 6 + DOCK_OFFSET_Y) + 'px';
+    dock.style.marginLeft = DOCK_OFFSET_X + 'px';
+    applyDockTransform(dock);
     return true;
+  }
+
+  function nudge(x, y) {
+    DOCK_OFFSET_X = (typeof x === 'number') ? x : DOCK_OFFSET_X;
+    DOCK_OFFSET_Y = (typeof y === 'number') ? y : DOCK_OFFSET_Y;
+    var dock = document.getElementById(DOCK_ID);
+    if (dock) positionDock(dock);
+    console.log('[OT TeamDock] offsets \u2192 x: ' + DOCK_OFFSET_X + 'px, y: ' + DOCK_OFFSET_Y + 'px' +
+      ' \u2014 when it looks right, send these two numbers to be hardcoded.');
+    return { x: DOCK_OFFSET_X, y: DOCK_OFFSET_Y };
+  }
+
+  function setDockScale(s, dock) {
+    dockPrefs.scale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(s * 100) / 100));
+    dock = dock || document.getElementById(DOCK_ID);
+    if (dock) applyDockTransform(dock);
+    saveDockPrefs();
+  }
+
+  function resetDock() {
+    dockPrefs = { custom: false, x: 0, y: 0, scale: 1 };
+    saveDockPrefs();
+    var dock = document.getElementById(DOCK_ID);
+    if (dock) positionDock(dock);
+    log('Dock reset to home position');
+  }
+
+  function isInteractiveTarget(t) {
+    return !!(t.closest && (t.closest('.ot-dock-item') || t.closest('button')));
+  }
+
+  function wireDockInteractions(dock) {
+    // ── Drag (mouse events — desktop CRM) ──
+    dock.addEventListener('mousedown', function(e) {
+      if (e.button !== 0 || isInteractiveTarget(e.target)) return;
+      var r = dock.getBoundingClientRect();
+      dragState = { startX: e.clientX, startY: e.clientY, origLeft: r.left, origTop: r.top, moved: false };
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!dragState) return;
+      var dx = e.clientX - dragState.startX, dy = e.clientY - dragState.startY;
+      if (!dragState.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+        dragState.moved = true; // threshold crossed: it's a drag, not a click
+        dockPrefs.custom = true;
+        dock.style.left = dragState.origLeft + 'px';
+        dock.style.top = dragState.origTop + 'px';
+        dock.style.marginLeft = '0px';
+        applyDockTransform(dock);
+      }
+      if (dragState.moved) {
+        var c = clampToViewport(dragState.origLeft + dx, dragState.origTop + dy, dock);
+        dock.style.left = c.x + 'px';
+        dock.style.top = c.y + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!dragState) return;
+      if (dragState.moved) {
+        dockPrefs.x = parseFloat(dock.style.left) || 0;
+        dockPrefs.y = parseFloat(dock.style.top) || 0;
+        dockPrefs.custom = true;
+        saveDockPrefs();
+      }
+      dragState = null;
+    });
+
+    // ── Resize: hover +/- buttons ──
+    var sizer = document.createElement('div');
+    sizer.className = 'ot-dock-size';
+    sizer.innerHTML =
+      '<button type="button" class="ot-dock-size-btn" data-size="-" title="Smaller">\u2212</button>' +
+      '<button type="button" class="ot-dock-size-btn" data-size="+" title="Bigger">+</button>';
+    dock.appendChild(sizer);
+    sizer.addEventListener('click', function(e) {
+      var b = e.target.closest('[data-size]');
+      if (!b) return;
+      e.stopPropagation();
+      setDockScale(dockPrefs.scale + (b.getAttribute('data-size') === '+' ? SCALE_STEP : -SCALE_STEP), dock);
+    });
+
+    // ── Resize: Ctrl/Cmd + scroll ──
+    dock.addEventListener('wheel', function(e) {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      setDockScale(dockPrefs.scale + (e.deltaY < 0 ? SCALE_STEP : -SCALE_STEP), dock);
+    }, { passive: false });
+
+    // ── Reset: double-click the navy ──
+    dock.addEventListener('dblclick', function(e) {
+      if (isInteractiveTarget(e.target)) return;
+      resetDock();
+    });
+  }
+
+  function nudge(x, y) {
+    DOCK_OFFSET_X = (typeof x === 'number') ? x : DOCK_OFFSET_X;
+    DOCK_OFFSET_Y = (typeof y === 'number') ? y : DOCK_OFFSET_Y;
+    var dock = document.getElementById(DOCK_ID);
+    if (dock) positionDock(dock);
+    console.log('[OT TeamDock] offsets \u2192 x: ' + DOCK_OFFSET_X + 'px, y: ' + DOCK_OFFSET_Y + 'px' +
+      ' \u2014 when it looks right, send these two numbers to be hardcoded.');
+    return { x: DOCK_OFFSET_X, y: DOCK_OFFSET_Y };
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1237,6 +1483,19 @@
         buttons =
           '<button type="button" class="ot-sam-btn" data-act="standby-on">Turn Sam On</button>' +
           '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="standby-off">Turn Sam Off</button>';
+      } else if (status === STATUS.MIA_SAM_OFF) {
+        // V19: Mia-aware restore — Sam does NOT come back "On" here.
+        // He returns to STANDBY, joining Mia's plan instead of breaking it.
+        var pick2 = rollSamOffPick();
+        face = (pick2 && pick2.url) || IMG.sam;
+        dotColor = '#8896a5';
+        say = (pick2 && pick2.say) || 'Sam\u2019s off the clock.';
+        var flavor2 = (pick2 && pick2.flavor) ? (pick2.flavor + ' ') : '';
+        body = flavor2 + 'Meanwhile, Mia\u2019s still following up with ' + lead + '. Bring Sam back and he\u2019ll wait on standby \u2014 the moment ' + lead + ' responds, Mia steps aside and Sam works to book your call.';
+        buttons = '<button type="button" class="ot-sam-btn" data-act="standby-restore">' +
+          ((pick2 && pick2.cta) || 'Bring Sam back') +
+          '<span class="ot-sam-btn-sub">He\u2019ll take over the moment ' + lead + ' responds</span>' +
+          '</button>';
       } else {
         var pick = rollSamOffPick();
         face = (pick && pick.url) || IMG.sam;
@@ -1284,9 +1543,13 @@
         '<div class="ot-samp-status">' +
           '<span class="ot-samp-dot" style="background:' + dotColor + ';"></span>' +
           '<strong style="color:#fff;">Sam</strong>&nbsp;Acquisitionist' +
+        (getCompanyName() ? '&nbsp;for&nbsp;<strong style="color:#fff;">' + getCompanyName() + '</strong>' : '') +
         '</div>' +
-        '<div class="ot-samp-say">' + say + '</div>' +
-        '<div class="' + bubbleClass + '">' + body + '</div>' +
+        '<div class="ot-samp-notch"></div>' +
+        '<div class="' + bubbleClass + '">' +
+          '<div class="ot-samp-say">' + say + '</div>' +
+          '<div class="ot-samp-body-text">' + body + '</div>' +
+        '</div>' +
         '<div class="ot-samp-cta">' + buttons + '</div>' +
       '</div>';
 
@@ -1302,6 +1565,8 @@
             'Heading back to the office\u2026 be there in a second', true);
           else if (act === 'off') setSamStatus(STATUS.SAM_OFF, btn,
             'Clocking Sam out\u2026', false);
+          else if (act === 'standby-restore') setSamStatus(STATUS.MIA_SAM_STANDBY, btn,
+            'Heading back\u2026 he\u2019ll wait on standby for ' + samLeadName(), true);
           else if (act === 'standby-on') renderSamView('standby-on');
           else if (act === 'standby-off') renderSamView('standby-off');
           else if (act === 'off-notify') setSamStatus(STATUS.MIA_SAM_OFF, btn,
@@ -1431,10 +1696,132 @@
       return;
     }
     if (!tabsReady()) {
-      alert('One second — still loading this lead\'s details. Try again in a moment.');
+      alert('One second \u2014 still loading this lead\'s details. Try again in a moment.');
       return;
     }
-    openMiaPopup();
+    // V20: when Mia is ACTIVE, her circle manages her; when idle, it
+    // starts her (the intake page). Each circle manages its own person.
+    var status = getAITeamStatus();
+    if (status === STATUS.MIA_SAM_STANDBY || status === STATUS.MIA_SAM_OFF) {
+      openMiaManagePopup();
+    } else {
+      openMiaPopup();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MIA MANAGEMENT POPUP (V20) — shares Sam's popup shell & CSS.
+  // Appears only while Mia is actively following up (values 3/4).
+  // Case A: stop, owner takes over  -> writes "Sam Off"  (via MIA_WEBHOOK)
+  // Case B: stop, hand to Sam       -> writes "Sam On"   (via MIA_WEBHOOK)
+  // Case C (Sam on standby) is handled from SAM's popup (v19 restore).
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function openMiaManagePopup() {
+    if (document.getElementById('ot-sam-overlay')) return;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'ot-sam-overlay';
+    overlay.addEventListener('click', closeSamPopup);
+    document.body.appendChild(overlay);
+
+    var card = document.createElement('div');
+    card.id = 'ot-sam-popup';
+    card.setAttribute('data-member', 'mia');
+    document.body.appendChild(card);
+    document.addEventListener('keydown', samEscHandler);
+
+    renderMiaManageView();
+  }
+
+  function renderMiaManageView() {
+    var card = document.getElementById('ot-sam-popup');
+    if (!card) return;
+
+    var lead = samLeadName();
+    var company = getCompanyName();
+
+    card.innerHTML =
+      '<div class="ot-samp-head">' +
+        '<span class="ot-samp-head-avatar"><img src="' + IMG.mia + '" alt="Mia"></span>' +
+        '<span>' +
+          '<div class="ot-samp-head-title">Mia</div>' +
+          '<div class="ot-samp-head-sub">Followup Specialist</div>' +
+        '</span>' +
+        '<button type="button" class="ot-sam-close" aria-label="Close">&times;</button>' +
+      '</div>' +
+      '<div class="ot-samp-body">' +
+        '<div class="ot-samp-portrait">' +
+          '<div class="ot-samp-glow"></div>' +
+          '<img src="' + IMG.mia + '" alt="Mia">' +
+        '</div>' +
+        '<div class="ot-samp-status">' +
+          '<span class="ot-samp-dot" style="background:#22c55e;"></span>' +
+          '<strong style="color:#fff;">Mia</strong>&nbsp;Followup Specialist' +
+          (company ? '&nbsp;for&nbsp;<strong style="color:#fff;">' + company + '</strong>' : '') +
+        '</div>' +
+        '<div class="ot-samp-notch"></div>' +
+        '<div class="ot-samp-bubble">' +
+          '<div class="ot-samp-say">Mia\u2019s on it.</div>' +
+          '<div class="ot-samp-body-text">She\u2019s following up with ' + lead + ' right now \u2014 next touch already scheduled. If something\u2019s changed (like ' + lead + ' just called you), tell me how to redirect.</div>' +
+        '</div>' +
+        '<div class="ot-samp-cta">' +
+          '<button type="button" class="ot-sam-btn" data-act="mia-stop-own">Stop Mia \u2014 I\u2019ll take it from here</button>' +
+          '<button type="button" class="ot-sam-btn" data-act="mia-stop-sam">Stop Mia \u2014 put Sam on it</button>' +
+          '<button type="button" class="ot-sam-btn ot-sam-btn--secondary" data-act="close">Never mind \u2014 let her cook</button>' +
+        '</div>' +
+      '</div>';
+
+    card.querySelector('.ot-sam-close').addEventListener('click', closeSamPopup);
+    var btns = card.querySelectorAll('[data-act]');
+    for (var i = 0; i < btns.length; i++) {
+      (function(btn) {
+        btn.addEventListener('click', function() {
+          var act = btn.getAttribute('data-act');
+          if (act === 'close') closeSamPopup();
+          else if (act === 'mia-stop-own') setMiaStop(STATUS.SAM_OFF, 'stop_owner_takeover',
+            'Mia Stop \u2192 Owner takes over', 'Telling Mia to wrap it up\u2026', btn);
+          else if (act === 'mia-stop-sam') setMiaStop(STATUS.SAM_ON, 'stop_handed_to_sam',
+            'Mia Stop \u2192 Handed to Sam', 'Handing ' + samLeadName() + ' to Sam\u2026', btn);
+        });
+      })(btns[i]);
+    }
+  }
+
+  function setMiaStop(value, miaAction, actionLabel, workingLabel, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = workingLabel; }
+
+    getLoggedInUser().then(function(user) {
+      return fetch(MIA_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'contactId': getContactId(),
+          'Location ID': getLocationId(),
+          'source': 'mia_popup',
+          'mia_action': miaAction,
+          'value': value,
+          'action': actionLabel,
+          'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
+          'timestamp': new Date().toISOString(),
+          'logged_in_user': user.name,
+          'logged_in_user_id': user.id,
+          'logged_in_user_email': user.email
+        })
+      });
+    }).then(function(res) {
+      if (res.ok) {
+        statusOverride = { contactId: getContactId(), value: value, ts: Date.now() };
+        applyStatusRings();
+        closeSamPopup();
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    }).catch(function(err) {
+      log('Mia stop failed: ' + err.message);
+      renderMiaManageView();
+      alert('Couldn\'t update Mia right now. Nothing was changed \u2014 please try again.');
+    });
   }
 
   function openMiaPopup() {
@@ -1519,6 +1906,9 @@
     getAITeamStatus: getAITeamStatus,
     applyStatusRings: applyStatusRings,
     openSamPopup: openSamPopup,
+    openMiaManagePopup: openMiaManagePopup,
+    nudge: nudge,
+    resetDock: resetDock,
     closeSamPopup: closeSamPopup,
     buildMiaURL: buildMiaURL,
     getCompanyName: getCompanyName,
