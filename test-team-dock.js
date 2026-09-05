@@ -471,6 +471,7 @@ section('Sam toggle popup (V4)');
       body3.locationId === 'gE9qbjW9QSgOwI1Api5h' &&
       body3['Location ID'] === undefined &&
       body3.value === 'Sam Off');
+    check('v28: toggle stamped source sam-popup', body3.source === 'sam-popup');
     check('audit: assigned_user carried', body3.assigned_user === 'Ahmed');
     check('audit: ISO timestamp', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body3.timestamp));
     check('audit: action "On to Off"', body3.action === 'On to Off');
@@ -729,6 +730,148 @@ section('V22: free-range pill (drag, resize, remember, reset)');
   mouse('mousemove', 580, 140);
   mouse('mouseup', 580, 140);
   check('drag from a circle is ignored', el.style.left === '50%');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V28: auto-assign the unowned');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const mkUser = (type) => ({ Utilities: { getCurrentUser: () => Promise.resolve({
+    id: 'U-123', name: 'Jane Sub', email: 'jane@co.com', type }) } });
+
+  // Unassigned + location-level user => claims via dock-autoassign
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam On', unassigned: true });
+  let fetched = null;
+  dom.window.fetch = (u, o) => { fetched = { u, o }; return Promise.resolve({ ok: true }); };
+  dom.window.AppUtils = mkUser('account');
+  const dock = loadDock(dom);
+  dock.refresh();
+  setTimeout(() => {
+    check('unassigned + account user => auto-assign fired', !!fetched);
+    const b = fetched ? JSON.parse(fetched.o.body) : {};
+    check('rides Sam webhook with dock-autoassign source', fetched && fetched.u.includes('0p6jeo2v4') && b.source === 'dock-autoassign');
+    check('carries the user to assign', b.assign_to_user_id === 'U-123' && b.assign_to_user_name === 'Jane Sub');
+    // second refresh must not double-fire
+    fetched = null;
+    dock.refresh();
+    setTimeout(() => {
+      check('once per contact per session', fetched === null);
+    }, 50);
+  }, 100);
+
+  // Agency user browsing => never claims
+  const dom2 = makeContactDOM({ aiStatusDetails: 'Sam On', unassigned: true });
+  let fetched2 = null;
+  dom2.window.fetch = (u, o) => { fetched2 = { u, o }; return Promise.resolve({ ok: true }); };
+  dom2.window.AppUtils = mkUser('agency');
+  loadDock(dom2).refresh();
+  setTimeout(() => {
+    check('agency user never claims leads', fetched2 === null);
+  }, 100);
+
+  // Owned lead => untouched
+  const dom3 = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  let fetched3 = null;
+  dom3.window.fetch = (u, o) => { fetched3 = { u, o }; return Promise.resolve({ ok: true }); };
+  dom3.window.AppUtils = mkUser('account');
+  loadDock(dom3).refresh();
+  setTimeout(() => {
+    check('owned lead untouched', fetched3 === null);
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V27: intake handshake (postMessage)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam Off' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  const doc = dom.window.document;
+  check('starts idle', doc.getElementById('ot-dock-mia').className.includes('ot-state-idle'));
+
+  const send = (origin, data) => {
+    const ev = new dom.window.MessageEvent('message', { origin, data });
+    dom.window.dispatchEvent(ev);
+  };
+
+  // Legit handshake → instant rings
+  send('https://www.offertermz.com', { source: 'ot-mia-page', type: 'intake-complete', ai_team_status: 'Mia Following Up & Sam On Standby' });
+  check('handshake: Mia green instantly', doc.getElementById('ot-dock-mia').className.includes('ot-state-on'));
+  check('handshake: Sam amber instantly', doc.getElementById('ot-dock-sam').className.includes('ot-state-standby'));
+
+  // Wrong origin → ignored
+  const dom2 = makeContactDOM({ aiStatusDetails: 'Sam Off' });
+  const dock2 = loadDock(dom2);
+  dock2.refresh();
+  const send2 = (origin, data) => dom2.window.dispatchEvent(new dom2.window.MessageEvent('message', { origin, data }));
+  send2('https://evil.example.com', { source: 'ot-mia-page', type: 'intake-complete', ai_team_status: 'Mia Following Up & Sam On Standby' });
+  check('wrong origin ignored', dom2.window.document.getElementById('ot-dock-mia').className.includes('ot-state-idle'));
+
+  // Bogus value → ignored
+  send2('https://www.offertermz.com', { source: 'ot-mia-page', type: 'intake-complete', ai_team_status: 'Sam On' });
+  check('non-Mia value rejected by whitelist', dom2.window.document.getElementById('ot-dock-mia').className.includes('ot-state-idle'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V26: unknown looks unknown (load flash)');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  // Page still building (tabs NOT ready), no row => loading pulse, not gray
+  const dom = makeContactDOM(); // no aiStatus, no details row
+  const dock = loadDock(dom);
+  const doc = dom.window.document;
+  dom.window.OT_TABS_READY = false; // simulate early load
+  dock.refresh();
+  check('born loading: Sam pulses before first read', doc.getElementById('ot-dock-sam').className.includes('ot-state-loading'));
+  check('born loading: Mia pulses too', doc.getElementById('ot-dock-mia').className.includes('ot-state-loading'));
+
+  // Details row arrives (late mount) with a real value => real state replaces the pulse
+  doc.body.insertAdjacentHTML('beforeend',
+    '<div class="space-y-1"><div><p class="hr-text">AI Team Status</p></div>' +
+    '<p class="hr-text hr-text-md"><span>Sam On</span></p></div>');
+  dock.refresh();
+  check('after mount (still pre-READY): Sam green, pulse gone', doc.getElementById('ot-dock-sam').className.includes('ot-state-on'));
+
+  // Page settled (READY) + row absent = pre-migration contact => honest idle
+  const domPre = makeContactDOM();
+  const dockPre = loadDock(domPre);
+  dockPre.refresh(); // harness has OT_TABS_READY = true
+  check('READY + absent field => idle, never eternal pulse', domPre.window.document.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
+
+  // Rendered row showing empty ('--') => honest idle immediately, never loading
+  const dom2 = makeContactDOM({ aiStatusDetails: '--' });
+  const dock2 = loadDock(dom2);
+  dock2.refresh();
+  check('rendered-empty: idle not loading', dom2.window.document.getElementById('ot-dock-sam').className.includes('ot-state-idle'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+section('V25 + ot-legend: the key map');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam On' });
+  const dock = loadDock(dom);
+  dock.refresh();
+  const doc = dom.window.document;
+  // Load the legend module into the same window
+  dom.window.eval(fs.readFileSync('./ot-legend.js', 'utf8'));
+  check('legend module registers', typeof dom.window.OT_Legend === 'object');
+
+  const infoBtn = doc.querySelector('.ot-dock-info-btn');
+  check('info button lives in the sizer cluster', !!infoBtn);
+  infoBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  const legend = doc.getElementById('ot-legend');
+  check('clicking i opens the legend', !!legend);
+  check('all four members present', ['Sam','Mia','Ruby','Tate'].every(n => legend.textContent.includes(n)));
+  check('roles in the product voice', legend.textContent.includes('The Followup Magician') && legend.textContent.includes('just the IT guy'));
+  check('Sam has three state rows', legend.textContent.includes('Sam On') && legend.textContent.includes('Standby') && legend.textContent.includes('call him back to the office'));
+  legend.querySelector('.ot-lg-btn').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  check('Got it closes the legend', !doc.getElementById('ot-legend'));
+
+  // Loader v10 wiring (static)
+  const ld = fs.readFileSync('./ot-loader.js', 'utf8');
+  check('loader v10 loads ot-legend.js in dock mode', ld.includes("MODULES.push('ot-legend.js')"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════

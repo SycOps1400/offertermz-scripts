@@ -3,6 +3,11 @@
  * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 10 *** — THE LEGEND
+ * UPDATES FROM V9:
+ * - New module in dock mode: ot-legend.js — the SMRT Team key map popup
+ *   (opened from the info icon on the dock pill).
+ *
  * *** VERSION 9 *** — THE SMRT TEAM DOCK (SANDBOX ONLY)
  * UPDATES FROM V8:
  * - New module: ot-team-dock.js — the navy Team Dock bar (SMRT AI Team
@@ -115,6 +120,7 @@
   // V9: the Team Dock itself (last — it depends on everything above).
   if (DOCK_ENABLED) {
     MODULES.push('ot-team-dock.js');
+      MODULES.push('ot-legend.js'); // V10: the SMRT Team key map
   }
 
   // ═══════════════════════════════════════════════════════════════════════

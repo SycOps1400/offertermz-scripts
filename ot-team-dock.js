@@ -3,6 +3,36 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 28 *** — AUTO-ASSIGN THE UNOWNED
+ * UPDATES FROM V27:
+ * - Unassigned lead + settled page => the dock silently assigns the
+ *   LOGGED-IN user via SAM_WEBHOOK (source:'dock-autoassign', Make PUTs
+ *   assignedTo). Agency users never claim; once per contact per session.
+ *   Fixes broken notifications/AI routing from users skipping the box.
+ * - Sam toggle payloads now stamped source:'sam-popup' (router-ready).
+ *
+ * *** VERSION 27 *** — THE INTAKE HANDSHAKE
+ * UPDATES FROM V26:
+ * - The dock now listens for a postMessage from the Mia intake page
+ *   (source 'ot-mia-page', type 'intake-complete') and flips the rings
+ *   instantly on a confirmed submit — same immediacy the toggle popups
+ *   always had. Origin-checked (www.offertermz.com), value-whitelisted,
+ *   exception-proof. Requires the page-side snippet (5 lines) in the
+ *   Mia page's success handler.
+ *
+ * *** VERSION 26 *** — UNKNOWN LOOKS UNKNOWN (load-flash fix)
+ * UPDATES FROM V25 (regression sweep 5 finding):
+ * - During page load, members no longer flash confident gray ("everyone's
+ *   off!") before the truth arrives. Until the first successful status
+ *   read for THIS contact, they wear a soft loading pulse. Real empty on
+ *   a rendered row still reads idle immediately (D18).
+ *
+ * *** VERSION 25 *** — THE KEY MAP OPENER
+ * UPDATES FROM V24:
+ * - An italic ℹ "i" button joins the hover +/- cluster; clicking opens
+ *   the SMRT Team legend (ot-legend.js, a separate self-contained module
+ *   loaded by loader v10). Graceful no-op if the module is absent.
+ *
  * *** VERSION 24 *** — ONE DIALECT: locationId EVERYWHERE
  * UPDATES FROM V23:
  * - The location key is now camelCase `locationId` in BOTH Sam's toggle
@@ -495,6 +525,17 @@
     return '';
   }
 
+  // V26: distinguishes "field is rendered and empty" (真 off) from
+  // "field hasn't rendered yet" (unknown — show loading, not gray).
+  function statusRowMounted() {
+    var labels = document.querySelectorAll('p.hr-text');
+    for (var i = 0; i < labels.length; i++) {
+      if (labels[i].textContent.trim() === STATUS_FIELD_LABEL) return true;
+    }
+    // legacy widget counts as mounted too
+    return !!document.getElementById('contact.ai_team_status');
+  }
+
   function getAITeamStatus() {
     var cid = getContactId();
     if (statusOverride.contactId === cid &&
@@ -790,6 +831,15 @@
       '#' + DOCK_ID + ' .ot-dock-item.ot-state-standby .ot-dock-online {' +
         'background: #f59e0b;' +
       '}' +
+      '@keyframes otMemberLoading {' +
+        '0%, 100% { opacity: 0.45; }' +
+        '50% { opacity: 0.85; }' +
+      '}' +
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-loading .ot-dock-online { display: none; }' +
+      '#' + DOCK_ID + ' .ot-dock-item.ot-state-loading .ot-dock-circle {' +
+        'border-color: #8896a5;' +
+        'animation: otMemberLoading 1.3s ease-in-out infinite;' +
+      '}' +
       '#' + DOCK_ID + ' .ot-dock-item.ot-state-idle .ot-dock-online {' +
         'display: none;' +
       '}' +
@@ -815,6 +865,9 @@
         'font-size: 12px; line-height: 1; font-weight: 700;' +
       '}' +
       '#' + DOCK_ID + ' .ot-dock-size-btn:hover { background: rgba(255,255,255,0.28); }' +
+      '#' + DOCK_ID + ' .ot-dock-info-btn {' + /* v25: legend opener */
+        'font-family: Georgia, serif; font-style: italic; font-size: 11px;' +
+      '}' +
 
       /* ── V11: Sam popup — Mia's design language ── */
       '#ot-sam-overlay {' +
@@ -1016,6 +1069,8 @@
       item.addEventListener('click', opts.onClick);
     }
 
+    if (opts.born) item.classList.add('ot-state-' + opts.born); // V26: unknown at birth
+
     return item;
   }
 
@@ -1040,14 +1095,14 @@
     // ── Team ──
     dock.appendChild(buildItem({
       id: 'ot-dock-sam', label: 'Sam', kind: 'member', img: IMG.sam,
-      online: true,
+      online: true, born: 'loading',
       title: 'Sam · Acquisitionist — click to see or change his status',
       onClick: onSamClick
     }));
 
     dock.appendChild(buildItem({
       id: 'ot-dock-mia', label: 'Mia', kind: 'member', img: IMG.mia,
-      online: true,
+      online: true, born: 'loading',
       title: 'Mia · Followup Specialist — click to hand off this lead',
       onClick: onMiaClick
     }));
@@ -1266,9 +1321,16 @@
     sizer.className = 'ot-dock-size';
     sizer.innerHTML =
       '<button type="button" class="ot-dock-size-btn" data-size="-" title="Smaller">\u2212</button>' +
-      '<button type="button" class="ot-dock-size-btn" data-size="+" title="Bigger">+</button>';
+      '<button type="button" class="ot-dock-size-btn" data-size="+" title="Bigger">+</button>' +
+      '<button type="button" class="ot-dock-size-btn ot-dock-info-btn" title="What do the colors mean?">i</button>';
     dock.appendChild(sizer);
     sizer.addEventListener('click', function(e) {
+      if (e.target.closest('.ot-dock-info-btn')) {
+        e.stopPropagation();
+        if (window.OT_Legend) window.OT_Legend.open(); // V25: the key map
+        else log('Legend module not loaded');
+        return;
+      }
       var b = e.target.closest('[data-size]');
       if (!b) return;
       e.stopPropagation();
@@ -1359,10 +1421,12 @@
       else item.classList.add('ot-dock-waiting');
     });
 
-    // V4: live status rings for Sam & Mia (readable once tabs are open)
-    if (tabsReady()) {
-      applyStatusRings();
-    }
+    // V26: rings apply on every refresh — the Details mirror renders
+    // before the folders, so the read doesn't wait on tabsReady.
+    applyStatusRings();
+
+    // V28: claim unowned leads for the logged-in (non-agency) user
+    maybeAutoAssign();
 
     var waitModuleItems = [
       document.getElementById('ot-dock-analyzer'),
@@ -1397,12 +1461,21 @@
   function setMemberState(id, state) {
     var el = document.getElementById(id);
     if (!el) return;
-    el.classList.remove('ot-state-on', 'ot-state-standby', 'ot-state-idle');
+    el.classList.remove('ot-state-on', 'ot-state-standby', 'ot-state-idle', 'ot-state-loading');
     el.classList.add('ot-state-' + state);
   }
 
   function applyStatusRings() {
     var status = getAITeamStatus();
+
+    // V26: no value, no cache for this contact, and the status row isn't
+    // even rendered yet => we genuinely don't know. Pulse, don't lie gray.
+    if (!status && !statusRowMounted() &&
+        statusCache.contactId !== getContactId() && !tabsReady()) {
+      setMemberState('ot-dock-sam', 'loading');
+      setMemberState('ot-dock-mia', 'loading');
+      return;
+    }
 
     var samState = (status === STATUS.SAM_ON) ? 'on'
       : (status === STATUS.MIA_SAM_STANDBY) ? 'standby'
@@ -1617,14 +1690,15 @@
           return {
             id: (u && u.id) || 'UNKNOWN',
             name: (u && u.name) || 'UNKNOWN',
-            email: (u && u.email) || 'UNKNOWN'
+            email: (u && u.email) || 'UNKNOWN',
+            type: (u && u.type) || 'UNKNOWN'
           };
         }).catch(function() {
-          return { id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN' };
+          return { id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN', type: 'UNKNOWN' };
         });
       }
     } catch (e) { /* fall through */ }
-    return Promise.resolve({ id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN' });
+    return Promise.resolve({ id: 'UNKNOWN', name: 'UNKNOWN', email: 'UNKNOWN', type: 'UNKNOWN' });
   }
 
   // V8: human-readable Sam state for the audit trail
@@ -1678,6 +1752,7 @@
         body: JSON.stringify({
           'contactId': getContactId(),
           'locationId': getLocationId(),
+          'source': 'sam-popup',
           'value': value,
           'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
           'timestamp': new Date().toISOString(),
@@ -1733,6 +1808,91 @@
   // Case B: stop, hand to Sam       -> writes "Sam On"   (via MIA_WEBHOOK)
   // Case C (Sam on standby) is handled from SAM's popup (v19 restore).
   // ═══════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // V28: AUTO-ASSIGN THE UNOWNED (the logged-in user claims the lead)
+  // Users skip the Assigned-To box constantly, which breaks notifications
+  // and AI-team routing. Workflows can't know the logged-in user and
+  // snapshots can't carry user IDs — the dock is the ONE place that can.
+  // Guards: agency users never claim; fires only after READY with the
+  // owner area confirmed absent; once per contact per session.
+  // Rides SAM_WEBHOOK with source:'dock-autoassign' — Make route filter
+  // does: PUT { "assignedTo": "{{2.assign_to_user_id}}" }.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  var AUTO_ASSIGN_UNOWNED = true;
+  var autoAssignDone = {}; // contactId -> true (session memory)
+
+  function ownerConfirmedAbsent() {
+    // Live GHL renders NO owner element for unassigned leads; some views
+    // render the word "Unassigned". Either counts — but only post-READY.
+    if (!tabsReady()) return false;
+    var wrap = document.querySelector('#owner-dropdown-trigger');
+    if (!wrap) return true;
+    return getAssignedUserFirstName() === 'UNASSIGNED';
+  }
+
+  function maybeAutoAssign() {
+    if (!AUTO_ASSIGN_UNOWNED) return;
+    if (!isOnContactPage()) return;
+    var cid = getContactId();
+    if (!cid || autoAssignDone[cid]) return;
+    if (!ownerConfirmedAbsent()) return;
+
+    autoAssignDone[cid] = true; // pre-mark: never double-fire the async path
+
+    getLoggedInUser().then(function(user) {
+      if (!user.id || user.id === 'UNKNOWN') return;
+      if (user.type === 'agency') {
+        log('Auto-assign skipped: agency user browsing (' + user.name + ')');
+        return;
+      }
+      log('Auto-assign: claiming unowned lead for ' + user.name);
+      return fetch(SAM_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'contactId': cid,
+          'locationId': getLocationId(),
+          'source': 'dock-autoassign',
+          'assign_to_user_id': user.id,
+          'assign_to_user_name': user.name,
+          'timestamp': new Date().toISOString(),
+          'logged_in_user': user.name,
+          'logged_in_user_id': user.id,
+          'logged_in_user_email': user.email
+        })
+      }).then(function(res) {
+        log(res && res.ok ? 'Auto-assign confirmed' : 'Auto-assign write failed (will not retry this session)');
+      });
+    }).catch(function(e) {
+      log('Auto-assign error: ' + e.message);
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // V27: THE INTAKE HANDSHAKE — the Mia page postMessages its parent on a
+  // confirmed submit; the dock flips the rings instantly instead of
+  // waiting for a refresh. Message contract (page side):
+  //   window.parent.postMessage({
+  //     source: 'ot-mia-page', type: 'intake-complete',
+  //     ai_team_status: '<one of the two Mia values>'
+  //   }, '*');
+  // Origin + shape + value whitelist enforced here.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  window.addEventListener('message', function(ev) {
+    try {
+      if (ev.origin !== 'https://www.offertermz.com') return;
+      var d = ev.data;
+      if (!d || d.source !== 'ot-mia-page' || d.type !== 'intake-complete') return;
+      var val = d.ai_team_status;
+      if (val !== STATUS.MIA_SAM_STANDBY && val !== STATUS.MIA_SAM_OFF) return;
+      statusOverride = { contactId: getContactId(), value: val, ts: Date.now() };
+      applyStatusRings();
+      log('Intake handshake: rings set to "' + val + '"');
+    } catch (e) { /* never let a message break the dock */ }
+  });
 
   function openMiaManagePopup() {
     if (document.getElementById('ot-sam-overlay')) return;
