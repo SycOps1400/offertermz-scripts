@@ -3,6 +3,10 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 33 *** — SAM'S LOG PARITY
+ * UPDATES FROM V32: Sam's toggle payload carries lead_name too — the
+ * Sam Usage Log gets the same human-readable rows as Mia's.
+ *
  * *** VERSION 32 *** — STOPS KNOW THE LEAD
  * UPDATES FROM V31: Mia's stop payloads carry lead_name (first name off
  * the page) so usage-log rows read human without opening GHL.
@@ -1785,6 +1789,7 @@
           'contactId': getContactId(),
           'locationId': getLocationId(),
           'source': 'sam-popup',
+          'lead_name': firstWord(getFieldByLabel('First Name')) || '',
           'value': value,
           'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
           'timestamp': new Date().toISOString(),

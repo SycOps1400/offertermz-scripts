@@ -472,6 +472,7 @@ section('Sam toggle popup (V4)');
       body3['Location ID'] === undefined &&
       body3.value === 'Sam Off');
     check('v28: toggle stamped source sam-popup', body3.source === 'sam-popup');
+    check('v33: toggle carries lead_name', typeof body3.lead_name === 'string');
     check('audit: assigned_user carried', body3.assigned_user === 'Ahmed');
     check('audit: ISO timestamp', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body3.timestamp));
     check('audit: action "On to Off"', body3.action === 'On to Off');
