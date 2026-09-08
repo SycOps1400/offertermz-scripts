@@ -3,6 +3,22 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 30 *** — HANDSHAKE HARDENING + THE POLITE GOODBYE
+ * UPDATES FROM V29 (T3 field findings):
+ * - Origin check accepts BOTH https://www.offertermz.com and the bare
+ *   https://offertermz.com (a www mismatch was silently killing the
+ *   intake handshake => rings only updated after refresh).
+ * - The dock now honors the page's {mia:'close'} message: Mia's "Back
+ *   to OfferTermz" button closes the popup instead of stranding the
+ *   user at "You can close this tab."
+ *
+ * *** VERSION 29 *** — MIA KNOWS WHO'S TYPING
+ * UPDATES FROM V28:
+ * - The Mia intake URL gains logged_in_user=<first name> (prefetched at
+ *   boot via getCurrentUser). The page greets the human at the keyboard
+ *   by name — assigned, unassigned, or VA — and retires "Hey UNASSIGNED".
+ *   assigned_user still passes for the payload's ownership truth.
+ *
  * *** VERSION 28 *** — AUTO-ASSIGN THE UNOWNED
  * UPDATES FROM V27:
  * - Unassigned lead + settled page => the dock silently assigns the
@@ -612,6 +628,12 @@
 
     var assignedUser = getAssignedUserFirstName();
     if (assignedUser) params.push('assigned_user=' + encodeURIComponent(assignedUser));
+
+    // V29: the human at the keyboard — so Mia greets THEM by name and
+    // never says "UNASSIGNED". Prefetched at boot; omitted if unresolved.
+    if (loggedInUserInfo && loggedInUserInfo.name && loggedInUserInfo.name !== 'UNKNOWN') {
+      params.push('logged_in_user=' + encodeURIComponent(firstWord(loggedInUserInfo.name)));
+    }
 
     var company = getCompanyName();
     if (company) params.push('company=' + encodeURIComponent(company));
@@ -1823,6 +1845,10 @@
   var AUTO_ASSIGN_UNOWNED = true;
   var autoAssignDone = {}; // contactId -> true (session memory)
 
+  // V29: prefetched at boot so sync code (like buildMiaURL) can use it.
+  var loggedInUserInfo = null;
+  getLoggedInUser().then(function(u) { loggedInUserInfo = u; }).catch(function() {});
+
   function ownerConfirmedAbsent() {
     // Live GHL renders NO owner element for unassigned leads; some views
     // render the word "Unassigned". Either counts — but only post-READY.
@@ -1881,11 +1907,34 @@
   // Origin + shape + value whitelist enforced here.
   // ═══════════════════════════════════════════════════════════════════════
 
+  function isMiaPageOrigin(origin) {
+    // V30: the page may serve from www or bare domain — accept both,
+    // still locked to offertermz.com over https.
+    return origin === 'https://www.offertermz.com' ||
+           origin === 'https://offertermz.com';
+  }
+
   window.addEventListener('message', function(ev) {
     try {
-      if (ev.origin !== 'https://www.offertermz.com') return;
+      if (!isMiaPageOrigin(ev.origin)) return;
       var d = ev.data;
-      if (!d || d.source !== 'ot-mia-page' || d.type !== 'intake-complete') return;
+      if (!d) return;
+
+      // V30: the page's Back button asks its parent to close the popup
+      // ({mia:'close'} — the old ot-closer contract, now honored here).
+      if (d.mia === 'close') {
+        var pop = document.getElementById('ot-mia-popup');
+        if (pop) {
+          var x = pop.querySelector('[data-act="close"], .ot-mia-close');
+          if (x) x.click();
+          else if (pop.parentNode) pop.parentNode.removeChild(pop);
+        }
+        var ov = document.getElementById('ot-mia-popup-overlay');
+        if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+        return;
+      }
+
+      if (d.source !== 'ot-mia-page' || d.type !== 'intake-complete') return;
       var val = d.ai_team_status;
       if (val !== STATUS.MIA_SAM_STANDBY && val !== STATUS.MIA_SAM_OFF) return;
       statusOverride = { contactId: getContactId(), value: val, ts: Date.now() };

@@ -733,6 +733,32 @@ section('V22: free-range pill (drag, resize, remember, reset)');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+section('V29: Mia knows who\'s typing');
+// ═══════════════════════════════════════════════════════════════════════
+{
+  const dom = makeContactDOM({ aiStatusDetails: 'Sam Off', unassigned: true });
+  dom.window.AppUtils = { Utilities: { getCurrentUser: () => Promise.resolve({
+    id: 'U-9', name: 'Jane Sub Doe', email: 'j@co.com', type: 'account' }) } };
+  const dock = loadDock(dom);
+  dock.refresh();
+  setTimeout(() => {
+    const url = dom.window.OT_TeamDock.__test_buildMiaURL
+      ? dom.window.OT_TeamDock.__test_buildMiaURL()
+      : null;
+    if (url !== null) {
+      check('v29: logged_in_user param present (first name only)', url.includes('logged_in_user=Jane'));
+      check('v29: assigned_user still absent on unassigned lead', !url.includes('assigned_user='));
+    } else {
+      // fall back: open the Mia popup and read the iframe src
+      const doc = dom.window.document;
+      doc.getElementById('ot-dock-mia').dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      const frame = doc.querySelector('#ot-mia-popup iframe');
+      check('v29: logged_in_user param present (first name only)', !!frame && frame.src.includes('logged_in_user=Jane'));
+    }
+  }, 80);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 section('V28: auto-assign the unowned');
 // ═══════════════════════════════════════════════════════════════════════
 {
@@ -799,6 +825,14 @@ section('V27: intake handshake (postMessage)');
   send('https://www.offertermz.com', { source: 'ot-mia-page', type: 'intake-complete', ai_team_status: 'Mia Following Up & Sam On Standby' });
   check('handshake: Mia green instantly', doc.getElementById('ot-dock-mia').className.includes('ot-state-on'));
   check('handshake: Sam amber instantly', doc.getElementById('ot-dock-sam').className.includes('ot-state-standby'));
+
+  // Bare-domain origin → ALSO accepted (v30)
+  const domB = makeContactDOM({ aiStatusDetails: 'Sam Off' });
+  const dockB = loadDock(domB);
+  dockB.refresh();
+  const sendB = (origin, data) => domB.window.dispatchEvent(new domB.window.MessageEvent('message', { origin, data }));
+  sendB('https://offertermz.com', { source: 'ot-mia-page', type: 'intake-complete', ai_team_status: 'Mia Following Up & Sam On Standby' });
+  check('v30: bare-domain origin accepted', domB.window.document.getElementById('ot-dock-mia').className.includes('ot-state-on'));
 
   // Wrong origin → ignored
   const dom2 = makeContactDOM({ aiStatusDetails: 'Sam Off' });
