@@ -826,6 +826,22 @@ section('V27: intake handshake (postMessage)');
   check('handshake: Mia green instantly', doc.getElementById('ot-dock-mia').className.includes('ot-state-on'));
   check('handshake: Sam amber instantly', doc.getElementById('ot-dock-sam').className.includes('ot-state-standby'));
 
+  // v31: mia:close message tears down popup AND overlay
+  {
+    const domC = makeContactDOM({ aiStatusDetails: 'Sam Off' });
+    const dockC = loadDock(domC);
+    dockC.refresh();
+    const docC = domC.window.document;
+    docC.getElementById('ot-dock-mia').dispatchEvent(new domC.window.MouseEvent('click', { bubbles: true }));
+    check('v31 setup: popup open', !!docC.getElementById('ot-mia-popup'));
+    domC.window.dispatchEvent(new domC.window.MessageEvent('message', { origin: 'https://www.offertermz.com', data: { mia: 'close' } }));
+    setTimeout(() => {
+      // closeMiaPopup removes nodes after its 280ms fade
+      check('v31: popup gone on mia:close', !docC.getElementById('ot-mia-popup'));
+      check('v31: overlay/shadow gone too', !docC.getElementById('ot-mia-overlay'));
+    }, 400);
+  }
+
   // Bare-domain origin → ALSO accepted (v30)
   const domB = makeContactDOM({ aiStatusDetails: 'Sam Off' });
   const dockB = loadDock(domB);

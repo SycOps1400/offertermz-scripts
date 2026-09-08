@@ -3,6 +3,12 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 31 *** — THE SHADOW GOES TOO
+ * UPDATES FROM V30 (T3 field finding): the mia:close handler guessed
+ * wrong element ids — popup vanished, backdrop lingered. Now it clicks
+ * the popup's real close button (.ot-mia-popup-close => full teardown)
+ * with an exact-id fallback (POPUP_ID / OVERLAY_ID).
+ *
  * *** VERSION 30 *** — HANDSHAKE HARDENING + THE POLITE GOODBYE
  * UPDATES FROM V29 (T3 field findings):
  * - Origin check accepts BOTH https://www.offertermz.com and the bare
@@ -1923,14 +1929,14 @@
       // V30: the page's Back button asks its parent to close the popup
       // ({mia:'close'} — the old ot-closer contract, now honored here).
       if (d.mia === 'close') {
-        var pop = document.getElementById('ot-mia-popup');
-        if (pop) {
-          var x = pop.querySelector('[data-act="close"], .ot-mia-close');
-          if (x) x.click();
-          else if (pop.parentNode) pop.parentNode.removeChild(pop);
+        // V31: the dock's own teardown routine (popup + overlay + state).
+        try { closeMiaPopup(); }
+        catch (e2) {
+          var pop = document.getElementById(POPUP_ID);
+          if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
+          var ov = document.getElementById(OVERLAY_ID);
+          if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
         }
-        var ov = document.getElementById('ot-mia-popup-overlay');
-        if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
         return;
       }
 
