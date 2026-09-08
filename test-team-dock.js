@@ -628,6 +628,7 @@ section('V20: Mia management popup (each circle manages its person)');
     check('v24: locationId camelCase (space key retired)', b.locationId === 'gE9qbjW9QSgOwI1Api5h' && b['Location ID'] === undefined);
     check('case A writes Sam Off', b.value === 'Sam Off' && b.mia_action === 'stop_owner_takeover');
     check('case A cleanup tag', b.cleanup_tag === 'processing mia from on to off');
+    check('v32: stop payload carries lead_name', typeof b.lead_name === 'string');
     check('Mia audit action label', b.action === 'Mia Stop \u2192 Owner takes over');
     check('audit fields ride along', b.logged_in_user === 'Ahmed Afifi' && !!b.timestamp);
   }, 100);

@@ -3,6 +3,10 @@
  * OfferTermz SMRT Team Dock Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 32 *** — STOPS KNOW THE LEAD
+ * UPDATES FROM V31: Mia's stop payloads carry lead_name (first name off
+ * the page) so usage-log rows read human without opening GHL.
+ *
  * *** VERSION 31 *** — THE SHADOW GOES TOO
  * UPDATES FROM V30 (T3 field finding): the mia:close handler guessed
  * wrong element ids — popup vanished, backdrop lingered. Now it clicks
@@ -2035,6 +2039,7 @@
           'source': 'mia-popup',
           'mia_action': miaAction,
           'cleanup_tag': cleanupTag,
+          'lead_name': firstWord(getFieldByLabel('First Name')) || '',
           'value': value,
           'action': actionLabel,
           'assigned_user': getAssignedUserFirstName() || 'UNASSIGNED',
