@@ -3,6 +3,13 @@
  * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 11 *** — THE PILOT ALLOWLIST
+ * UPDATES FROM V10 (go-live day):
+ * - DOCK_ALLOWLIST: named locations that get the dock before the
+ *   ENABLE_DOCK_EVERYWHERE flip. Sandbox + Willow Tree (the permanent
+ *   pretend-customer proving ground). Nothing else changes; the
+ *   everywhere flip remains the final rollout switch.
+ *
  * *** VERSION 10 *** — THE LEGEND
  * UPDATES FROM V9:
  * - New module in dock mode: ot-legend.js — the SMRT Team key map popup
@@ -58,6 +65,13 @@
   
   var SANDBOX_LOCATION_ID = 'gE9qbjW9QSgOwI1Api5h';
 
+  // V11: named pilot locations that get the dock BEFORE the everywhere
+  // flip. Willow Tree = the permanent pretend-customer proving ground.
+  var DOCK_ALLOWLIST = [
+    SANDBOX_LOCATION_ID,
+    'hm1lUi8ORRi9WaPUW3SS'  // Willow Tree (pilot / pretend customer)
+  ];
+
   // V6: The Closer rollout switch.
   // false = new modules + The Closer button appear in the SANDBOX only.
   // true  = everyone gets them (flip this in the rollout tag).
@@ -91,7 +105,7 @@
   var CLOSER_ENABLED = ENABLE_CLOSER_EVERYWHERE || IS_SANDBOX;
 
   // V9: one flag that answers "does this account get the Team Dock?"
-  var DOCK_ENABLED = ENABLE_DOCK_EVERYWHERE || IS_SANDBOX;
+  var DOCK_ENABLED = ENABLE_DOCK_EVERYWHERE || DOCK_ALLOWLIST.indexOf(currentLocationId) !== -1;
   
   var GITHUB_BASE_URL = IS_SANDBOX
     ? 'https://cdn.jsdelivr.net/gh/SycOps1400/offertermz-scripts@dev/'
