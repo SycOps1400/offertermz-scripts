@@ -3,6 +3,27 @@
  * OfferTermz Auto-Tabs Module
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 3 *** — THE TAB ABOVE THE TABS
+ * UPDATES FROM V2:
+ * - GHL only mounts the Contact/Property folders under the side panel's
+ *   "All fields" tab. Refreshing while on DND/Actions meant the sentinel
+ *   fields never existed, so READY never fired. V3 first ensures the
+ *   "All fields" panel tab is active (.hr-tabs-tab[data-name="all-fields"],
+ *   active = .hr-tabs-tab--active), clicking it with the same throttling
+ *   as folder clicks, THEN proceeds to folders. Once READY fires the loop
+ *   stops, so users are never yanked back from DND/Actions afterward.
+ *
+ * *** VERSION 2 *** — NEVER GIVE UP, GET PATIENT
+ * UPDATES FROM V1:
+ * - V1 stopped checking forever after ~10 seconds (25 attempts x 400ms).
+ *   On slow GHL loads, tabs/fields weren't built in time, READY never
+ *   fired, and dependent buttons pulsed until a manual refresh — seen
+ *   intermittently on The Closer button and the Team Dock.
+ * - V2 downgrades instead of quitting: after the fast window, the loop
+ *   relaxes to one check every 3 seconds and keeps going until READY or
+ *   until navigation leaves the lead. Slow days become slow wakeups,
+ *   never dead buttons.
+ *
  * *** VERSION 1 ***
  *
  * FILE: ot-autotabs.js
@@ -46,8 +67,12 @@
   // Sentinel field per tab — READY only when every one of these exists
   var SENTINEL_FIELDS = ['First Name', 'Street Address'];
 
-  var CHECK_EVERY_MS = 400;    // how often the ensure-loop runs
-  var MAX_ATTEMPTS = 25;       // ~10 seconds before giving up quietly
+  var CHECK_EVERY_MS = 400;    // how often the ensure-loop runs (fast window)
+  var MAX_ATTEMPTS = 25;       // ~10s of fast checks before relaxing (V2: no more giving up)
+  var SLOW_CHECK_EVERY_MS = 3000; // V2: patient cadence after the fast window
+  // V3: the side panel tab that hosts the field folders
+  var FIELDS_PANEL_TAB = '.hr-tabs-tab[data-name="all-fields"]';
+  var PANEL_ACTIVE_CLASS = 'hr-tabs-tab--active';
   var URL_WATCH_MS = 300;      // how often we watch for lead switches
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -58,6 +83,8 @@
 
   var ensureInterval = null;
   var attempts = 0;
+  var slowMode = false; // V2
+  var lastPanelClickAt = -99; // V3: throttle for the All-fields tab click
   var lastClickAt = {};        // tabTitle -> attempt number of last click
   var currentContactId = null;
 
@@ -124,6 +151,20 @@
 
     attempts++;
 
+    // 0) V3: the folders only exist under the "All fields" panel tab.
+    //    If the strip is rendered and another tab is active, switch first —
+    //    folder work this tick would be pointless. If the strip isn't
+    //    rendered (older layout / not built yet), fall through unchanged.
+    var panelTab = document.querySelector(FIELDS_PANEL_TAB);
+    if (panelTab && !panelTab.classList.contains(PANEL_ACTIVE_CLASS)) {
+      if (attempts - lastPanelClickAt >= 2) {
+        log('🗂 AutoTabs: switching side panel to "All fields" (attempt ' + attempts + ')');
+        panelTab.click();
+        lastPanelClickAt = attempts;
+      }
+      return; // give GHL a cycle to mount the folders
+    }
+
     // 1) Open any tab that exists but is still collapsed.
     //    Click once, then give GHL two cycles to flip it before re-clicking,
     //    so we never machine-gun the toggle.
@@ -167,11 +208,16 @@
       }
     }
 
-    // 3) Give up quietly after the limit — page is in an unusual state.
-    //    Buttons that depend on READY simply stay in their loading look.
-    if (attempts >= MAX_ATTEMPTS) {
-      stopEnsuring('max attempts reached');
-      log('⚠️ AutoTabs: gave up after ' + attempts + ' attempts (tabs or fields never appeared)');
+    // 3) V2: never give up while still on this lead — get patient instead.
+    //    After the fast window, GHL is having a slow day: relax to a
+    //    3-second cadence and keep checking until READY or navigation.
+    //    (V1 stopped forever here, leaving pulsing buttons only a manual
+    //    refresh could fix.)
+    if (attempts >= MAX_ATTEMPTS && !slowMode) {
+      slowMode = true;
+      if (ensureInterval) clearInterval(ensureInterval);
+      ensureInterval = setInterval(ensureTick, SLOW_CHECK_EVERY_MS);
+      log('🐢 AutoTabs: slow mode after ' + attempts + ' fast attempts — retrying every ' + (SLOW_CHECK_EVERY_MS / 1000) + 's until ready');
     }
   }
 
@@ -179,6 +225,8 @@
     stopEnsuring('restart');
     window.OT_TABS_READY = false;
     attempts = 0;
+    slowMode = false; // V2: every lead starts with the fast window again
+    lastPanelClickAt = -99; // V3
     lastClickAt = {};
     ensureTick(); // run immediately, then on the interval
     ensureInterval = setInterval(ensureTick, CHECK_EVERY_MS);
