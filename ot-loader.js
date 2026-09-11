@@ -3,6 +3,12 @@
  * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 12 *** — THE FLIP
+ * GO-LIVE (Sep 11, 2026): ENABLE_DOCK_EVERYWHERE = true. The SMRT Team
+ * Dock ships to every location. The allowlist remains for reference;
+ * the everywhere flag now supersedes it. Rollback = repoint the
+ * whitelabel tag to v1.3.0 (dock gated) or v1.2.10 (pre-dock).
+ *
  * *** VERSION 11 *** — THE PILOT ALLOWLIST
  * UPDATES FROM V10 (go-live day):
  * - DOCK_ALLOWLIST: named locations that get the dock before the
@@ -81,7 +87,7 @@
   // false = the dock (and the retirement of header buttons + lead strip)
   //         happens in the SANDBOX only. Production stays pure v8.
   // true  = everyone gets the dock (flip this in the rollout tag).
-  var ENABLE_DOCK_EVERYWHERE = false;
+  var ENABLE_DOCK_EVERYWHERE = true;
   
   function getLoaderVersion() {
     var scripts = document.querySelectorAll('script[src*="offertermz-scripts"]');
