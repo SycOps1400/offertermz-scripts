@@ -60,13 +60,13 @@
           [eq(ST, 'Mia Following Up & Sam Off')],
           [eq(ST, 'Mia Following Up & Sam On Standby')]
         ]) },
-      { name: '🔎 Other Contacts', order: 3, columns: STD, sort: sortBy('dateAdded'),
-        spec: spec([[notEq(TY, 'Seller'), notEq(TY, 'Buyer')]]) },
-      { name: '🚫 Asked to Stop', order: 4, columns: DND, sort: sortBy('lastActivity'),
+      { name: '🚫 Asked to Stop', order: 3, columns: DND, sort: sortBy('lastActivity'),
         spec: spec([
           [eq('dnd_settings.SMS.status', 'true')],
           [eq('dnd_settings.Call.status', 'true')]
-        ]) }
+        ]) },
+      { name: '🔎 Other Contacts', order: 4, columns: STD, sort: sortBy('dateAdded'),
+        spec: spec([[notEq(TY, 'Seller'), notEq(TY, 'Buyer')]]) },
     ];
   }
 
@@ -172,15 +172,39 @@
       return out;
     }
     if (typeof node !== 'object') return out;
-    if (typeof node.listName === 'string') out.push(node.listName.trim());
+    if (typeof node.listName === 'string') {
+      out.push({ name: node.listName.trim(), id: node.id || node._id || node.smartListId || null });
+    }
     Object.keys(node).forEach(function (k) { harvestNames(node[k], out, depth + 1); });
     return out;
   }
 
-  function existing(tok, loc, uid) {
+  function existingLists(tok, loc, uid) {
     return api(S, '/contacts/smartlist/search?locationId=' + loc + '&userId=' + uid +
                   '&globals=true&transform=true', tok)
       .then(function (j) { return harvestNames(j, [], 0); });
+  }
+  function existing(tok, loc, uid) {
+    return existingLists(tok, loc, uid).then(function (L) { return L.map(function (x) { return x.name; }); });
+  }
+
+  /* ---------- force the order: Waiting → Sam → Mia → Stop → Other ---------- */
+  // Captured from the UI drag: PUT /contacts/smartlist/{id} {displayOrder, locationId}.
+  // Runs after every build so restores land in the right slot, not at the end.
+  // Best-effort: an ordering hiccup must never fail a successful build.
+  function reorder(tok, loc, uid) {
+    var defs = definitions({ status: 'x', type: 'x' });
+    return existingLists(tok, loc, uid).then(function (L) {
+      return defs.reduce(function (chain, d) {
+        return chain.then(function () {
+          var hit = L.find(function (x) { return x.name === d.name && x.id; });
+          if (!hit) return;
+          return api(S, '/contacts/smartlist/' + hit.id, tok, {
+            method: 'PUT', body: { displayOrder: d.order, locationId: loc }
+          }).catch(function (e) { console.warn('[ot-smartlists] reorder skipped for ' + d.name, e.message); });
+        });
+      }, Promise.resolve());
+    }).catch(function (e) { console.warn('[ot-smartlists] reorder pass skipped', e.message); });
   }
 
   /* ---------- build one ---------- */
@@ -190,6 +214,7 @@
       body: {
         listName: def.name,
         locationId: loc,
+        displayOrder: def.order,   // your flow: Waiting → Sam → Mia → Stop → Other
         columns: def.columns,
         sortSpecs: def.sort,
         filterSpecs: def.spec
@@ -205,23 +230,33 @@
   }
 
   /* ---------- UI ---------- */
+  var TATE_IMG = 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771e49b2eaead5c292992.webp';
   var CSS = [
-    '#ot-sl-bar{position:relative;z-index:50;margin:0 0 14px;padding:16px 20px;border-radius:14px;',
-    'background:linear-gradient(135deg,#1E3A5F,#2a5080);color:#fff;display:flex;align-items:center;',
-    'gap:18px;flex-wrap:wrap;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
-    'box-shadow:0 6px 22px rgba(30,58,95,.28)}',
+    '#ot-sl-bar{position:relative;z-index:50;margin:0 0 14px;padding:14px 18px;border-radius:14px;',
+    'background:#1E3A5F;color:#fff;display:flex;align-items:center;gap:16px;flex-wrap:wrap;',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
+    'border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(15,31,51,.25)}',
+    '#ot-sl-bar.ot-float{position:fixed;top:14px;left:50%;transform:translateX(-50%);',
+    'width:min(920px,calc(100vw - 28px));margin:0;z-index:9999}',
+    '#ot-sl-bar .ot-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;object-fit:cover;',
+    'border:2px solid #E85A33;box-shadow:0 4px 12px rgba(0,0,0,.3)}',
     '#ot-sl-bar .ot-t{flex:1 1 320px;min-width:0}',
-    '#ot-sl-bar .ot-t b{display:block;font-size:15.5px;font-weight:800;margin-bottom:3px}',
-    '#ot-sl-bar .ot-t span{font-size:13.5px;color:rgba(255,255,255,.76);line-height:1.45}',
-    '#ot-sl-go{flex-shrink:0;border:0;border-radius:50px;cursor:pointer;padding:13px 26px;',
-    'font:800 15px/1 inherit;background:#E85A33;color:#fff;box-shadow:0 5px 16px rgba(232,90,51,.4);',
+    '#ot-sl-bar .ot-who{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;',
+    'color:#E85A33;margin-bottom:3px;display:flex;align-items:center;gap:6px}',
+    '#ot-sl-bar .ot-dot{width:7px;height:7px;border-radius:50%;background:#E85A33;display:inline-block}',
+    '#ot-sl-bar.ot-busy .ot-dot{background:#f5a623;animation:otSlPulse 1s ease-in-out infinite}',
+    '#ot-sl-bar.ot-ok .ot-dot{background:#22c55e}',
+    '#ot-sl-bar.ot-err .ot-dot{background:#ef4444}',
+    '@keyframes otSlPulse{0%,100%{opacity:.4}50%{opacity:1}}',
+    '#ot-sl-bar .ot-t b{display:block;font-size:15px;font-weight:800;margin-bottom:2px;color:#fff}',
+    '#ot-sl-bar .ot-t span{font-size:13px;color:rgba(255,255,255,.7);line-height:1.45}',
+    '#ot-sl-bar.ot-err .ot-t span{color:#fca5a5}',
+    '#ot-sl-go{flex-shrink:0;border:0;border-radius:50px;cursor:pointer;padding:12px 22px;',
+    'font:800 14px/1 inherit;background:#E85A33;color:#fff;box-shadow:0 4px 14px rgba(232,90,51,.35);',
     'transition:background .18s,transform .18s}',
     '#ot-sl-go:hover:not(:disabled){background:#f06c46;transform:translateY(-1px)}',
-    '#ot-sl-go:disabled{opacity:.6;cursor:default;transform:none}',
-    '#ot-sl-bar.ot-err{background:linear-gradient(135deg,#7f1d1d,#991b1b)}',
-    '#ot-sl-bar.ot-ok{background:linear-gradient(135deg,#166534,#16a34a)}',
-    '#ot-sl-bar.ot-float{position:fixed;top:14px;left:50%;transform:translateX(-50%);',
-    'width:min(760px,92vw);z-index:99999;margin:0}'
+    '#ot-sl-go:disabled{opacity:.55;cursor:default;transform:none}',
+    '#ot-sl-bar.ot-ok #ot-sl-go{background:#22c55e;box-shadow:0 4px 14px rgba(34,197,94,.3)}'
   ].join('');
 
   function styleOnce() {
@@ -243,8 +278,7 @@
 
   function render(missingCount, onGo) {
     styleOnce();
-    var mp = mountPoint();
-    var host = mp.host;
+    var host = mountPoint();
     var old = document.getElementById('ot-sl-bar');
     if (old) old.remove();
 
@@ -252,16 +286,17 @@
     var bar = document.createElement('div');
     bar.id = 'ot-sl-bar';
     bar.innerHTML =
-      '<div class="ot-t"><b>' +
-        (all ? 'Your Pro Lists aren\'t set up yet.'
-             : 'You\'re missing ' + missingCount + ' of your 5 Pro Lists.') +
-      '</b><span>' +
-        (all ? 'Without them you can\'t see who Sam is booking, who Mia is following up with, or who\'s waiting on you.'
-             : 'Rebuild the missing ones so nothing falls through the cracks.') +
-      '</span></div>' +
-      '<button id="ot-sl-go">' + (all ? 'Build My 5 Lists' : 'Restore ' + missingCount + ' Lists') + '</button>';
-    if (mp.floating) bar.className = 'ot-float';
-    host.insertBefore(bar, host.firstChild);
+      '<img class="ot-av" src="' + TATE_IMG + '" alt="Tate">' +
+      '<div class="ot-t">' +
+        '<div class="ot-who"><span class="ot-dot"></span>Tate &middot; CRM Support</div>' +
+        '<b>' + (all ? 'Hey \u2014 your 5 Pro Lists aren\u2019t set up yet.'
+                     : 'Hey \u2014 you\u2019re missing ' + missingCount + ' of your 5 Pro Lists.') + '</b>' +
+        '<span>' + (all ? 'They show you who Sam is booking, who Mia\u2019s chasing, and who\u2019s waiting on you. I\u2019ll build and share them with your whole team \u2014 consider it handled.'
+                        : 'I\u2019ll restore the missing ones and share them with your team. Nothing else gets touched.') + '</span>' +
+      '</div>' +
+      '<button id="ot-sl-go">' + (all ? 'Let Tate build them' : 'Restore ' + missingCount + ' lists') + '</button>';
+    if (host) { host.insertBefore(bar, host.firstChild); }
+    else { bar.classList.add('ot-float'); document.body.appendChild(bar); }
     document.getElementById('ot-sl-go').addEventListener('click', onGo);
     return bar;
   }
@@ -269,12 +304,12 @@
   function setBar(state, title, sub, busy) {
     var bar = document.getElementById('ot-sl-bar');
     if (!bar) return;
-    var floating = bar.classList.contains('ot-float');
-    bar.className = (state || '') + (floating ? ' ot-float' : '');
+    var keepFloat = bar.classList.contains('ot-float');
+    bar.className = (state || '') + (keepFloat ? ' ot-float' : '');
     bar.querySelector('.ot-t b').textContent = title;
     bar.querySelector('.ot-t span').textContent = sub || '';
     var btn = document.getElementById('ot-sl-go');
-    if (btn) { btn.disabled = !!busy; if (busy) btn.textContent = 'Building…'; }
+    if (btn) { btn.disabled = !!busy; if (busy) btn.textContent = 'Building\u2026'; }
   }
 
   /* ---------- run ---------- */
@@ -293,7 +328,7 @@
         if (!missing.length) return;          // all five present — render nothing
 
         render(missing.length, function () {
-          setBar('', 'Building your lists…', 'One moment.', true);
+          setBar('ot-busy', 'On it \u2014 building your lists\u2026', 'Give me a few seconds.', true);
 
           // Re-check what exists RIGHT NOW — never trust the page-load snapshot.
           // A retry after a partial failure, a double-click, or a second admin
@@ -307,16 +342,18 @@
               return chain.then(function () {
                 return buildOne(tok, loc, d).then(function (n) { done.push(n); });
               });
-            }, Promise.resolve()).then(function () { return done; });
+            }, Promise.resolve()).then(function () {
+              return reorder(tok, loc, uid).then(function () { return done; });
+            });
           }).then(function (done) {
-            setBar('ot-ok', 'Done — ' + done.length + ' lists built and shared.',
-                   'Refresh the page to see them.', true);
+            setBar('ot-ok', 'Done \u2014 ' + done.length + ' list' + (done.length === 1 ? '' : 's') + ' built and shared with your team.',
+                   'Refresh the page and they\u2019re yours.', true);
             var btn = document.getElementById('ot-sl-go');
             if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; btn.onclick = function () { location.reload(); }; }
           }).catch(function (e) {
             console.error('[ot-smartlists]', e);
-            setBar('ot-err', 'Couldn\'t finish building your lists.',
-                   (e && e.message ? e.message : 'Unknown error') + ' — nothing was changed by the failed step.', false);
+            setBar('ot-err', 'Hit a snag building your lists.',
+                   (e && e.message ? e.message : 'Unknown error') + ' \u2014 nothing was changed by the failed step. Try again, or ping support and I\u2019ll sort it.', false);
             var btn = document.getElementById('ot-sl-go');
             if (btn) { btn.disabled = false; btn.textContent = 'Try again'; }
           });
