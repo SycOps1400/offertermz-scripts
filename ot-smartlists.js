@@ -459,7 +459,7 @@
           .filter(function (d) { return names.indexOf(d.name) === -1; });
         if (!missing.length) return;          // all five present — render nothing
 
-        render(missing.length, loc, function () {
+        var go = function () {
           openStage();
           say('On it \u2014 give me a few seconds.');
 
@@ -528,12 +528,13 @@
               stage.classList.add('err');
               stage.querySelector('.st-retry').onclick = function () {
                 closeStage();
-                window.__otSmartlistsRan = false; lastPath = ''; // re-evaluate on next tick → pill returns
+                go();                            // actually try again, right now
               };
               stage.querySelector('.st-later').onclick = function () { snooze(loc, 7); closeStage(); };
             }, 200);
           });
-        });
+        };
+        render(missing.length, loc, go);
       });
     }).catch(function (e) { console.error('[ot-smartlists]', e); });
   }
