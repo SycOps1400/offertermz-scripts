@@ -399,7 +399,7 @@
     lastPath = p;
     var bar = document.getElementById('ot-sl-bar');
     if (bar) bar.remove();
-    if (!/\/contacts(\/|$)/.test(p)) return;
+    if (!/\/contacts\/smart_list(\/|$)/.test(p)) return;   // list views only — never a contact's detail page
     window.__otSmartlistsRan = false;
     setTimeout(function () {
       if (window.__otSmartlistsRan) return;
