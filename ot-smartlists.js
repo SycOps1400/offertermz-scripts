@@ -278,7 +278,8 @@
 
   function render(missingCount, onGo) {
     styleOnce();
-    var host = mountPoint();
+    var mp = mountPoint();               // { host, floating }
+    var host = mp.host, floating = mp.floating;
     var old = document.getElementById('ot-sl-bar');
     if (old) old.remove();
 
@@ -295,8 +296,8 @@
                         : 'I\u2019ll restore the missing ones and share them with your team. Nothing else gets touched.') + '</span>' +
       '</div>' +
       '<button id="ot-sl-go">' + (all ? 'Let Tate build them' : 'Restore ' + missingCount + ' lists') + '</button>';
-    if (host) { host.insertBefore(bar, host.firstChild); }
-    else { bar.classList.add('ot-float'); document.body.appendChild(bar); }
+    if (floating) { bar.classList.add('ot-float'); host.appendChild(bar); }
+    else { host.insertBefore(bar, host.firstChild); }
     document.getElementById('ot-sl-go').addEventListener('click', onGo);
     return bar;
   }
