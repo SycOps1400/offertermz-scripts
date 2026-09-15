@@ -362,7 +362,10 @@
   }
 
   /* ---------- the stage ---------- */
-  var stage = null, typing = false, queue = [], lastLineAt = 0, quipTimer = null, quipIdx = 0;
+  var stage = null, typing = false, queue = [], lastLineAt = 0, quipTimer = null, quipIdx = 0, stageOpenedAt = 0;
+  var TYPE_MS = 34;        // per character — readable, not frantic
+  var DWELL_MS = 1300;     // hold each finished line before the next starts
+  var MIN_STAGE_MS = 6000; // never flash by faster than this
   var QUIPS = [
     'I think I\u2019m going to enjoy working here.',
     'No donuts were harmed during this setup.',
@@ -385,7 +388,7 @@
         '<div class="st-err"><button class="st-retry">Try again</button><button class="st-later">Back to training</button></div>' +
       '</div>';
     document.body.appendChild(stage);
-    queue = []; typing = false; lastLineAt = Date.now(); quipIdx = 0;
+    queue = []; typing = false; lastLineAt = Date.now(); quipIdx = 0; stageOpenedAt = Date.now();
     quipTimer = setInterval(function () {
       // fill genuine silence only: nothing typing, nothing queued, 3s since the last line
       if (!typing && !queue.length && Date.now() - lastLineAt > 3000 && quipIdx < QUIPS.length &&
@@ -409,8 +412,8 @@
     (function tickChar() {
       if (!stage) return;
       p.textContent = text.slice(0, ++k);
-      if (k < text.length) setTimeout(tickChar, 22);
-      else { typing = false; lastLineAt = Date.now(); setTimeout(pump, 350); }
+      if (k < text.length) setTimeout(tickChar, TYPE_MS);
+      else { lastLineAt = Date.now(); setTimeout(function () { typing = false; pump(); }, DWELL_MS); }
     })();
   }
 
@@ -458,8 +461,7 @@
 
         render(missing.length, loc, function () {
           openStage();
-          say('On it.');
-          say('Checking what you\u2019ve got\u2026');
+          say('On it \u2014 give me a few seconds.');
 
           // Re-check what exists RIGHT NOW — never trust the page-load snapshot.
           // A retry after a partial failure, a double-click, or a second admin
@@ -472,33 +474,35 @@
             var total = defs.length;
             // One at a time: GHL's share endpoint refuses concurrent calls.
             // The progress line keeps the wait honest.
-            var WORDS = ['one', 'two', 'three', 'four', 'five'];
+            // Six beats max, read-paced. The bar carries the fine-grained progress.
             function afterLine(i) {          // i = how many are done now
               var left = total - i;
-              if (left === 0) return 'And that\u2019s the last one.';
-              if (i === 1) return 'List one done. ' + WORDS[left].charAt(0).toUpperCase() + WORDS[left].slice(1) + ' to go.';
+              if (left === 0) return 'That\u2019s the last one.';
+              if (i === 1) return 'First one\u2019s done.';
+              if (i === Math.ceil(total / 2) && total > 2) return 'Halfway there.';
               if (left === 1) return 'Last one coming up\u2026';
-              return WORDS[i].charAt(0).toUpperCase() + WORDS[i].slice(1) + ' down, ' + WORDS[left] + ' left.';
+              return null;                   // quiet beat: bar moves, no line
             }
-            say(total === 1 ? 'Building your list\u2026' : 'Building your ' + WORDS[total] + ' lists\u2026');
+            say(total === 1 ? 'Building your list\u2026' : 'Building your ' + total + ' lists\u2026');
             return defs.reduce(function (chain, d, i) {
               return chain.then(function () {
                 return buildOne(tok, loc, d).then(function (n) {
                   done.push(n);
                   stageProgress(Math.round(((i + 1) / (total + 1)) * 100));
-                  say(afterLine(i + 1));
+                  var line = afterLine(i + 1); if (line) say(line);
                 });
               });
             }, Promise.resolve()).then(function () {
-              say('Putting them in the right order \u2014 Waiting, Sam, Mia, Stop, Other.');
+              say('Putting them in order.');
               stageProgress(92);
               return reorder(tok, loc, uid).then(function () { return done; });
             });
           }).then(function (done) {
             stageProgress(100);
-            say('All set. Refreshing your screen so you can see them.');
+            say('All set \u2014 refreshing so you can see them.');
             var waitTyped = setInterval(function () {
               if (typing || queue.length) return;
+              if (Date.now() - stageOpenedAt < MIN_STAGE_MS) return;
               clearInterval(waitTyped);
               if (!stage) return;
               stage.classList.add('done');
