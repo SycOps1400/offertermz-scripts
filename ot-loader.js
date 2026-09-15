@@ -3,6 +3,13 @@
  * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 14 *** — SANDBOX DRINKS FROM THE SOURCE
+ * UPDATES FROM V13: on the sandbox location, modules are fetched from
+ * GitHub raw (dev branch) and executed via Blob scripts. Dev iterations
+ * no longer wait on jsDelivr's branch cache or purge rituals. Production
+ * locations are untouched (jsDelivr tag URLs as before). CDN fallback if
+ * raw is unreachable.
+ *
  * *** VERSION 13 *** — PRO LISTS
  * UPDATES FROM V12: ot-smartlists.js rides with the dock. It renders a
  * banner on the Contacts page when any of the five recommended smart
@@ -204,7 +211,45 @@
   // SCRIPT LOADER
   // ═══════════════════════════════════════════════════════════════════════
 
+  // V14: on the sandbox, pull modules straight from GitHub raw (never stale
+  // for more than ~5 min, no purge ritual) and run them via a Blob script —
+  // same global-scope execution as a <script src>, immune to raw's
+  // text/plain MIME block. jsDelivr's /gh/ endpoint ignores ?v= busters, so
+  // the old nocache path only ever worked when a purge happened to land.
+  var RAW_DEV_BASE = 'https://raw.githubusercontent.com/SycOps1400/offertermz-scripts/dev/';
+
+  function runBlobScript(text, onDone, onFail) {
+    try {
+      var blob = new Blob([text], { type: 'text/javascript' });
+      var script = document.createElement('script');
+      script.src = URL.createObjectURL(blob);
+      script.onload = function() { URL.revokeObjectURL(script.src); onDone(); };
+      script.onerror = function() { URL.revokeObjectURL(script.src); onFail(); };
+      document.head.appendChild(script);
+    } catch (e) { onFail(); }
+  }
+
   function loadScript(url, moduleName, callback) {
+    if (IS_SANDBOX) {
+      fetch(RAW_DEV_BASE + moduleName + '?v=' + Date.now(), { cache: 'no-store' })
+        .then(function(r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(function(text) {
+          runBlobScript(text, function() { callback(true); }, function() {
+            logError('❌ Failed to execute (raw): ' + moduleName);
+            failedModules.push(moduleName);
+            callback(false);
+          });
+        })
+        .catch(function(e) {
+          log('⚠️ raw fetch failed for ' + moduleName + ' (' + e.message + ') — falling back to CDN');
+          loadViaTag(url, moduleName, callback);
+        });
+      return;
+    }
+    loadViaTag(url, moduleName, callback);
+  }
+
+  function loadViaTag(url, moduleName, callback) {
     var script = document.createElement('script');
     script.src = url + '?v=' + CACHE_VERSION;
     script.onload = function() {
