@@ -3,6 +3,12 @@
  * OfferTermz Loader v9
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * *** VERSION 13 *** — PRO LISTS
+ * UPDATES FROM V12: ot-smartlists.js rides with the dock. It renders a
+ * banner on the Contacts page when any of the five recommended smart
+ * lists are missing and builds + shares them on click (admins only).
+ * Gated by DOCK_ENABLED on purpose: the lists are about Sam and Mia.
+ *
  * *** VERSION 12 *** — THE FLIP
  * GO-LIVE (Sep 11, 2026): ENABLE_DOCK_EVERYWHERE = true. The SMRT Team
  * Dock ships to every location. The allowlist remains for reference;
@@ -140,7 +146,8 @@
   // V9: the Team Dock itself (last — it depends on everything above).
   if (DOCK_ENABLED) {
     MODULES.push('ot-team-dock.js');
-      MODULES.push('ot-legend.js'); // V10: the SMRT Team key map
+    MODULES.push('ot-legend.js');     // V10: the SMRT Team key map
+    MODULES.push('ot-smartlists.js'); // V13: the five Pro Lists (self-gates to /contacts)
   }
 
   // ═══════════════════════════════════════════════════════════════════════
