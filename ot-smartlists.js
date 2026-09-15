@@ -232,31 +232,36 @@
   /* ---------- UI ---------- */
   var TATE_IMG = 'https://assets.cdn.filesafe.space/i4rM5yzyWVChiudy75qX/media/6a9771e49b2eaead5c292992.webp';
   var CSS = [
-    '#ot-sl-bar{position:relative;z-index:50;margin:0 0 14px;padding:14px 18px;border-radius:14px;',
-    'background:#1E3A5F;color:#fff;display:flex;align-items:center;gap:16px;flex-wrap:wrap;',
+    '#ot-sl-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;',
+    'width:min(900px,calc(100vw - 28px));padding:10px 14px 10px 10px;border-radius:999px;',
+    'background:#1E3A5F;color:#fff;display:flex;align-items:center;gap:14px;',
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
-    'border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px rgba(15,31,51,.25)}',
-    '#ot-sl-bar.ot-float{position:fixed;top:14px;left:50%;transform:translateX(-50%);',
-    'width:min(920px,calc(100vw - 28px));margin:0;z-index:9999}',
-    '#ot-sl-bar .ot-av{flex-shrink:0;width:48px;height:48px;border-radius:50%;object-fit:cover;',
+    'border:1px solid rgba(255,255,255,.08);box-shadow:0 14px 40px rgba(15,31,51,.4);',
+    'animation:otSlIn .4s ease}',
+    '@keyframes otSlIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}',
+    '#ot-sl-bar .ot-av{flex-shrink:0;width:50px;height:50px;border-radius:50%;object-fit:cover;',
     'border:2px solid #E85A33;box-shadow:0 4px 12px rgba(0,0,0,.3)}',
-    '#ot-sl-bar .ot-t{flex:1 1 320px;min-width:0}',
-    '#ot-sl-bar .ot-who{font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;',
-    'color:#E85A33;margin-bottom:3px;display:flex;align-items:center;gap:6px}',
-    '#ot-sl-bar .ot-dot{width:7px;height:7px;border-radius:50%;background:#E85A33;display:inline-block}',
+    '#ot-sl-bar .ot-t{flex:1 1 auto;min-width:0}',
+    '#ot-sl-bar .ot-who{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;',
+    'color:#E85A33;margin-bottom:2px;display:flex;align-items:center;gap:6px}',
+    '#ot-sl-bar .ot-dot{width:7px;height:7px;border-radius:50%;background:#E85A33;display:inline-block;flex-shrink:0}',
     '#ot-sl-bar.ot-busy .ot-dot{background:#f5a623;animation:otSlPulse 1s ease-in-out infinite}',
     '#ot-sl-bar.ot-ok .ot-dot{background:#22c55e}',
     '#ot-sl-bar.ot-err .ot-dot{background:#ef4444}',
     '@keyframes otSlPulse{0%,100%{opacity:.4}50%{opacity:1}}',
-    '#ot-sl-bar .ot-t b{display:block;font-size:15px;font-weight:800;margin-bottom:2px;color:#fff}',
-    '#ot-sl-bar .ot-t span{font-size:13px;color:rgba(255,255,255,.7);line-height:1.45}',
-    '#ot-sl-bar.ot-err .ot-t span{color:#fca5a5}',
-    '#ot-sl-go{flex-shrink:0;border:0;border-radius:50px;cursor:pointer;padding:12px 22px;',
+    '#ot-sl-bar .ot-title{display:block;font-size:14.5px;font-weight:800;color:#fff;line-height:1.25}',
+    '#ot-sl-bar .ot-sub{display:block;font-size:12.5px;color:rgba(255,255,255,.68);line-height:1.35;margin-top:1px}',
+    '#ot-sl-bar.ot-err .ot-sub{color:#fca5a5}',
+    '#ot-sl-bar .ot-actions{flex-shrink:0;display:flex;align-items:center;gap:12px}',
+    '#ot-sl-later{background:none;border:0;color:rgba(255,255,255,.5);font:600 12.5px/1 inherit;cursor:pointer;padding:6px}',
+    '#ot-sl-later:hover{color:#fff}',
+    '#ot-sl-go{border:0;border-radius:999px;cursor:pointer;padding:12px 20px;',
     'font:800 14px/1 inherit;background:#E85A33;color:#fff;box-shadow:0 4px 14px rgba(232,90,51,.35);',
-    'transition:background .18s,transform .18s}',
+    'transition:background .18s,transform .18s;white-space:nowrap}',
     '#ot-sl-go:hover:not(:disabled){background:#f06c46;transform:translateY(-1px)}',
     '#ot-sl-go:disabled{opacity:.55;cursor:default;transform:none}',
-    '#ot-sl-bar.ot-ok #ot-sl-go{background:#22c55e;box-shadow:0 4px 14px rgba(34,197,94,.3)}'
+    '#ot-sl-bar.ot-ok #ot-sl-go{background:#22c55e;box-shadow:0 4px 14px rgba(34,197,94,.3)}',
+    '@media(max-width:640px){#ot-sl-bar{border-radius:20px;flex-wrap:wrap}#ot-sl-bar .ot-actions{width:100%;justify-content:flex-end}}'
   ].join('');
 
   function styleOnce() {
@@ -276,10 +281,16 @@
     return { host: document.body, floating: true };   // never silently fail to render
   }
 
-  function render(missingCount, onGo) {
+  var SNOOZE_KEY = 'ot_sl_snooze_';
+  function snoozed(loc) {
+    try { return Number(localStorage.getItem(SNOOZE_KEY + loc) || 0) > Date.now(); } catch (e) { return false; }
+  }
+  function snooze(loc, days) {
+    try { localStorage.setItem(SNOOZE_KEY + loc, String(Date.now() + days * 864e5)); } catch (e) {}
+  }
+
+  function render(missingCount, loc, onGo) {
     styleOnce();
-    var mp = mountPoint();               // { host, floating }
-    var host = mp.host, floating = mp.floating;
     var old = document.getElementById('ot-sl-bar');
     if (old) old.remove();
 
@@ -289,28 +300,34 @@
     bar.innerHTML =
       '<img class="ot-av" src="' + TATE_IMG + '" alt="Tate">' +
       '<div class="ot-t">' +
-        '<div class="ot-who"><span class="ot-dot"></span>Tate &middot; CRM Support</div>' +
-        '<b>' + (all ? 'Hey \u2014 your 5 Pro Lists aren\u2019t set up yet.'
-                     : 'Hey \u2014 you\u2019re missing ' + missingCount + ' of your 5 Pro Lists.') + '</b>' +
-        '<span>' + (all ? 'They show you who Sam is booking, who Mia\u2019s chasing, and who\u2019s waiting on you. I\u2019ll build and share them with your whole team \u2014 consider it handled.'
-                        : 'I\u2019ll restore the missing ones and share them with your team. Nothing else gets touched.') + '</span>' +
+        '<div class="ot-who"><span class="ot-dot"></span>Tate &middot; The IT Guy</div>' +
+        '<span class="ot-title">' + (all ? 'Looks like your 5 OfferTermz Smart Lists aren\u2019t here yet.'
+                                          : missingCount + ' of your 5 OfferTermz Smart Lists ' + (missingCount === 1 ? 'is' : 'are') + ' missing.') + '</span>' +
+        '<span class="ot-sub">I\u2019ll handle it from here \u2014 just give me the OK.</span>' +
       '</div>' +
-      '<button id="ot-sl-go">' + (all ? 'Let Tate build them' : 'Restore ' + missingCount + ' lists') + '</button>';
-    if (floating) { bar.classList.add('ot-float'); host.appendChild(bar); }
-    else { host.insertBefore(bar, host.firstChild); }
+      '<div class="ot-actions">' +
+        '<button id="ot-sl-later">Not now</button>' +
+        '<button id="ot-sl-go">' + (all ? 'OK, go Tate' : 'OK, fix them') + '</button>' +
+      '</div>';
+    document.body.appendChild(bar);
     document.getElementById('ot-sl-go').addEventListener('click', onGo);
+    document.getElementById('ot-sl-later').addEventListener('click', function () {
+      snooze(loc, 7);
+      bar.remove();
+    });
     return bar;
   }
 
-  function setBar(state, title, sub, busy) {
+  function setBar(state, title, sub, busy, btnText) {
     var bar = document.getElementById('ot-sl-bar');
     if (!bar) return;
-    var keepFloat = bar.classList.contains('ot-float');
-    bar.className = (state || '') + (keepFloat ? ' ot-float' : '');
-    bar.querySelector('.ot-t b').textContent = title;
-    bar.querySelector('.ot-t span').textContent = sub || '';
+    bar.className = state || '';
+    bar.querySelector('.ot-title').textContent = title;
+    bar.querySelector('.ot-sub').textContent = sub || '';
+    var later = document.getElementById('ot-sl-later');
+    if (later) later.style.display = busy || state === 'ot-ok' ? 'none' : '';
     var btn = document.getElementById('ot-sl-go');
-    if (btn) { btn.disabled = !!busy; if (busy) btn.textContent = 'Building\u2026'; }
+    if (btn) { btn.disabled = !!busy; if (btnText) btn.textContent = btnText; }
   }
 
   /* ---------- run ---------- */
@@ -323,13 +340,15 @@
       if (!uid) throw new Error('no user id in token');
       if (!isAdmin(tok)) return;            // plain users: never show the banner
 
+      if (snoozed(loc)) return;             // they said "Not now" this week
+
       return existing(tok, loc, uid).then(function (names) {
         var missing = definitions({ status: 'x', type: 'x' })
           .filter(function (d) { return names.indexOf(d.name) === -1; });
         if (!missing.length) return;          // all five present — render nothing
 
-        render(missing.length, function () {
-          setBar('ot-busy', 'On it \u2014 building your lists\u2026', 'Give me a few seconds.', true);
+        render(missing.length, loc, function () {
+          setBar('ot-busy', 'On it.', 'Building your lists\u2026', true, 'Working\u2026');
 
           // Re-check what exists RIGHT NOW — never trust the page-load snapshot.
           // A retry after a partial failure, a double-click, or a second admin
@@ -339,24 +358,33 @@
             var defs = definitions(f).filter(function (d) { return nowNames.indexOf(d.name) === -1; });
             if (!defs.length) return [];
             var done = [];
-            return defs.reduce(function (chain, d) {
-              return chain.then(function () {
-                return buildOne(tok, loc, d).then(function (n) { done.push(n); });
+            var total = defs.length;
+            // Parallel builds: the reorder pass owns the final order, so
+            // creation sequence no longer matters. ~2s instead of ~10s.
+            return Promise.all(defs.map(function (d) {
+              return buildOne(tok, loc, d).then(function (n) {
+                done.push(n);
+                setBar('ot-busy', 'On it.', 'Building ' + done.length + ' of ' + total + '\u2026', true, 'Working\u2026');
               });
-            }, Promise.resolve()).then(function () {
+            })).then(function () {
+              setBar('ot-busy', 'On it.', 'Putting them in order\u2026', true, 'Working\u2026');
               return reorder(tok, loc, uid).then(function () { return done; });
             });
           }).then(function (done) {
-            setBar('ot-ok', 'Done \u2014 ' + done.length + ' list' + (done.length === 1 ? '' : 's') + ' built and shared with your team.',
-                   'Refresh the page and they\u2019re yours.', true);
+            setBar('ot-ok', 'All set.',
+                   'I think I might end up enjoying my job here. Back to training now.', false, 'Refresh (5)');
             var btn = document.getElementById('ot-sl-go');
-            if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; btn.onclick = function () { location.reload(); }; }
+            var left = 5;
+            var timer = setInterval(function () {
+              left -= 1;
+              if (btn) btn.textContent = left > 0 ? 'Refresh (' + left + ')' : 'Refreshing\u2026';
+              if (left <= 0) { clearInterval(timer); location.reload(); }
+            }, 1000);
+            if (btn) { btn.onclick = function () { clearInterval(timer); location.reload(); }; }
           }).catch(function (e) {
             console.error('[ot-smartlists]', e);
-            setBar('ot-err', 'Hit a snag building your lists.',
-                   (e && e.message ? e.message : 'Unknown error') + ' \u2014 nothing was changed by the failed step. Try again, or ping support and I\u2019ll sort it.', false);
-            var btn = document.getElementById('ot-sl-go');
-            if (btn) { btn.disabled = false; btn.textContent = 'Try again'; }
+            setBar('ot-err', 'Hmm \u2014 hit a snag.',
+                   (e && e.message ? e.message : 'Unknown error') + '. Nothing was changed by the failed step. Want me to try again?', false, 'Try again');
           });
         });
       });
