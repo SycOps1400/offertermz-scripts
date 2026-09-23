@@ -328,7 +328,7 @@
   var OVERLAY_ID = 'ot-mia-overlay';
   var REFRESH_EVERY_MS = 500;
 
-  var MIA_URL = 'https://www.offertermz.com/mia';
+    var MIA_URL = 'https://offertermz-site.ahmed-d77.workers.dev/mia';
 
   // V4: Sam toggle backend — a small Make scenario (webhook -> Airtable
   // token lookup by location_id -> GHL PUT of the AI Team Status field).
@@ -1925,8 +1925,9 @@
   function isMiaPageOrigin(origin) {
     // V30: the page may serve from www or bare domain — accept both,
     // still locked to offertermz.com over https.
-    return origin === 'https://www.offertermz.com' ||
-           origin === 'https://offertermz.com';
+        return origin === 'https://www.offertermz.com' ||
+           origin === 'https://offertermz.com' ||
+           origin === 'https://offertermz-site.ahmed-d77.workers.dev';
   }
 
   window.addEventListener('message', function(ev) {
